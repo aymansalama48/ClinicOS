@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Entities\Appointments\Events\" />
+    <Folder Include="Entities\MedicalRecords\Events\" />
+    <Folder Include="Entities\Patients\Events\" />
+    <Folder Include="Entities\Prescriptions\Events\" />
+    <Folder Include="Entities\Receptionists\Events\" />
+    <Folder Include="Entities\Specializations\Events\" />
+  </ItemGroup>
+
+</Project>
