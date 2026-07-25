@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ClinicOS.Domain.Entities.Security
+namespace ClinicOS.Application.Common.Errors.Identity
 {
     /// <summary>
     /// أخطاء خاصة بـ Refresh Token للموظفين

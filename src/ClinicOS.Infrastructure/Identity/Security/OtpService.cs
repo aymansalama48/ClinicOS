@@ -1,9 +1,9 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Core;
 using ClinicOS.Application.Common.Abstractions.Identity.Authentication;
+using ClinicOS.Application.Common.Errors.Identity;
 using ClinicOS.Domain.Common.Results;
-using ClinicOS.Domain.Entities.Security;
+using ClinicOS.Domain.Entities.OtpVerification;
 using ClinicOS.Domain.Enums;
-using ClinicOS.Domain.Security;
 using ClinicOS.Infrastructure.Options;
 using ClinicOS.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,5 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Core;
+using ClinicOS.Application.Common.Abstractions.Identity.Tokens;
 using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Errors.Users;
 using ClinicOS.Application.Features.Accounts.Shared;
@@ -16,15 +17,18 @@ namespace ClinicOS.Infrastructure.Identity.UserManagement;
 public class UserManagementService : IUserManagementService
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IRefreshTokenService _refreshTokenService;
     private readonly IDateTime _dateTime;
     private readonly ILogger<UserManagementService> _logger;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
+        IRefreshTokenService refreshTokenService,
         IDateTime dateTime,
         ILogger<UserManagementService> logger)
     {
         _userManager = userManager;
+        _refreshTokenService = refreshTokenService;
         _dateTime = dateTime;
         _logger = logger;
     }
@@ -68,7 +72,8 @@ public class UserManagementService : IUserManagementService
     }
 
     /// <summary>
-    /// تعطيل تسجيل الدخول فقط — لو المستخدم مريض، حجوزاته وتاريخه الطبي مش بيتأثروا
+    /// تعطيل تسجيل الدخول + إلغاء كل الجلسات الشغالة (Refresh Tokens) فورًا
+    /// عشان موظف اتعمله Deactivate ميقدرش يستخدم السيستم حتى لو معاه Refresh Token صالح
     /// </summary>
     public async Task<Result> DeactivateUserAsync(
         Guid userId,
@@ -91,8 +96,11 @@ public class UserManagementService : IUserManagementService
             return Result.Failure(UserErrors.UpdateFailed(errors));
         }
 
-        _logger.LogInformation("تم تعطيل المستخدم {UserId} بنجاح", userId);
-        return Result.Success("تم تعطيل الحساب بنجاح");
+        // إلغاء كل الجلسات الشغالة فورًا (كل الأجهزة)
+        await _refreshTokenService.RevokeAllUserTokensAsync(userId, cancellationToken);
+
+        _logger.LogInformation("تم تعطيل المستخدم {UserId} وإلغاء كل جلساته بنجاح", userId);
+        return Result.Success("تم تعطيل الحساب وإنهاء كل الجلسات بنجاح");
     }
 
     /// <summary>

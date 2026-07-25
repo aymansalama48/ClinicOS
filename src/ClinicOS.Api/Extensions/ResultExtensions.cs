@@ -1,3 +1,4 @@
+using ClinicOS.Application.Common.Constants;
 using ClinicOS.Domain.Common.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -59,7 +60,6 @@ public static class ResultExtensions
             Type = $"https://httpstatuses.com/{statusCode}"
         };
 
-        // إرفاق تفاصيل قائمة الأخطاء المباشرة
         problemDetails.Extensions["errors"] = errorList.Select(e => new
         {
             e.Code,
@@ -70,9 +70,18 @@ public static class ResultExtensions
         if (httpContext != null)
         {
             problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+
+            if (httpContext.Items.TryGetValue(CorrelationConstants.HeaderKey, out var correlationId))
+            {
+                problemDetails.Extensions["correlationId"] = correlationId;
+            }
+
             problemDetails.Instance = $"{httpContext.Request.Method} {httpContext.Request.Path}";
         }
 
-        return Results.Json(problemDetails, statusCode: statusCode);
+        return Results.Json(
+            problemDetails,
+            statusCode: statusCode,
+            contentType: "application/problem+json");
     }
 }

@@ -1,20 +1,20 @@
 ﻿using ClinicOS.Domain.Common.Results;
+using ClinicOS.Domain.Enums;
 
 namespace ClinicOS.Application.Common.Abstractions.Identity.Authentication;
 
 public interface IPatientAuthService
 {
     /// <summary>
-    /// التحقق من OTP وإنشاء/جلب المريض وإرجاع JWT قصير المدى (للحجز أو عرض الحجوزات)
+    /// التحقق من OTP وإنشاء/جلب المريض وإرجاع JWT قصير المدى
+    /// يُستخدم لأي غرض (تأكيد حجز / مشاهدة حجوزات) حسب الـ purpose الممرر
     /// </summary>
     Task<Result<PatientAuthResponse>> VerifyOtpAndLoginAsync(
         string phoneNumber,
         string code,
+        OtpPurpose purpose,   // 👈 مضافة
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// إنشاء حساب دائم للمريض (Email + Password) وربطه ببيانات Patient القديمة بعد تأكيد الـ OTP
-    /// </summary>
     Task<Result<PatientAuthResponse>> RegisterPermanentAccountAsync(
         string email,
         string password,
@@ -22,12 +22,13 @@ public interface IPatientAuthService
         string otpCode,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// تسجيل دخول المريض الذي يمتلك حساباً دائماً باستخدام البريد وكلمة السر
-    /// </summary>
     Task<Result<PatientAuthResponse>> LoginWithEmailAsync(
         string email,
         string password,
+        CancellationToken cancellationToken = default);
+    // IPatientAuthService.cs — إضافة Method جديدة
+    Task<Result<PatientAuthResponse>> LoginWithGoogleAsync(
+        string idToken,
         CancellationToken cancellationToken = default);
 }
 
@@ -35,5 +36,5 @@ public record PatientAuthResponse(
     Guid PatientId,
     string AccessToken,
     int ExpiresInSeconds,
-    bool IsPermanentAccount
-);
+    bool IsPermanentAccount,
+    bool RequiresPhoneNumber = false);

@@ -1,6 +1,8 @@
+using ClinicOS.Application.Common.Constants;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -23,13 +25,37 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        // 1. تسجيل الخطأ مع تفاصيل الـ Exception في Serilog
         _logger.LogError(exception, "Unhandled Exception: {Message}", exception.Message);
 
+        var correlationId = httpContext.Items[CorrelationConstants.HeaderKey]?.ToString()
+                            ?? httpContext.TraceIdentifier;
+
+        // 1. معالجة تعارض التزامن (RowVersion / DbUpdateConcurrencyException)
+        if (exception is DbUpdateConcurrencyException)
+        {
+            httpContext.Response.ContentType = "application/problem+json";
+            httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+
+            var conflictDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Conflict",
+                Detail = "تم تعديل هذه البيانات بواسطة مستخدم آخر في نفس الوقت، يرجى إعادة تحميل الصفحة والمحاولة مجدداً.",
+                Instance = $"{httpContext.Request.Method} {httpContext.Request.Path}",
+                Type = "https://httpstatuses.com/409"
+            };
+
+            conflictDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+            conflictDetails.Extensions["correlationId"] = correlationId;
+
+            await httpContext.Response.WriteAsJsonAsync(conflictDetails, cancellationToken);
+            return true;
+        }
+
+        // 2. معالجة أي خطأ عام غير متوقع (500)
         httpContext.Response.ContentType = "application/problem+json";
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-        // 2. بناء الـ ProblemDetails
         var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
@@ -40,8 +66,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         };
 
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+        problemDetails.Extensions["correlationId"] = correlationId;
 
-        // 3. كتابة الاستجابة
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
         return true;

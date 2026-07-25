@@ -20,12 +20,16 @@ public static partial class DependencyInjection
         IConfiguration configuration)
     {
         services
-            .AddCoreServices()                   // تسجيل الخدمات الأساسية وسياق الطلبات
-            .AddPersistence(configuration)       // تسجيل قاعدة البيانات والـ Interceptors والـ Jobs
-            .AddJwtAuthentication(configuration) // تسجيل التوثيق وإعدادات الـ JWT باسم الميثود الجديد
-            .AddMail(configuration)              // تسجيل إعدادات وخدمات البريد الإلكتروني
-            .AddFileStorage(configuration)        // تسجيل إعدادات إدارة وتخزين الملفات
-            .AddBaseUrl(configuration);          // تسجيل إعدادات الرابط الرئيسي للتطبيق
+               .AddCoreServices()                    // الخدمات الأساسية
+               .AddCaching()                         // ✅ تسجيل خدمات الـ Caching
+               .AddPersistence(configuration)        // قاعدة البيانات
+               .AddJwtAuthentication(configuration)  // التوثيق
+               .AddExternalAuth(configuration)       // تسجيل المصادقة الخارجية (Google Auth)
+               .AddMail(configuration)               // البريد الإلكتروني
+               .AddFileStorage(configuration)        // تخزين الملفات
+               .AddBaseUrl(configuration)            // الروابط الأساسية
+               .AddOtpService(configuration)         // إضافة OTP Service
+               .AddIdentityServices();               // إضافة خدمات Identity
 
         return services;
     }

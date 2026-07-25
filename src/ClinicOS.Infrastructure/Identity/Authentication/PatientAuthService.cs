@@ -1,11 +1,13 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Core;
 using ClinicOS.Application.Common.Abstractions.Identity.Authentication;
+using ClinicOS.Application.Common.Abstractions.Identity.Providers;
 using ClinicOS.Application.Common.Abstractions.Identity.Tokens;
+using ClinicOS.Application.Common.Errors.Identity;
 using ClinicOS.Application.Common.Errors.Users;
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Domain.Entities.Patients;
 using ClinicOS.Domain.Enums;
-using ClinicOS.Domain.Security;
+using ClinicOS.Domain.Errors.Patients;
 using ClinicOS.Infrastructure.Persistence.Data;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using Microsoft.AspNetCore.Identity;
@@ -27,8 +29,8 @@ public class PatientAuthService : IPatientAuthService
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IDateTime _dateTime;
     private readonly ILogger<PatientAuthService> _logger;
+    private readonly IEnumerable<IExternalAuthProvider> _externalAuthProviders;
 
-    // مدة صلاحية توكن المريض (قصيرة المدى - مثلاً ساعة واحدة)
     private const int PatientTokenExpirySeconds = 3600;
 
     public PatientAuthService(
@@ -37,6 +39,7 @@ public class PatientAuthService : IPatientAuthService
         SignInManager<ApplicationUser> signInManager,
         IOtpService otpService,
         IJwtTokenGenerator jwtTokenGenerator,
+         IEnumerable<IExternalAuthProvider> externalAuthProviders,
         IDateTime dateTime,
         ILogger<PatientAuthService> logger)
     {
@@ -45,24 +48,27 @@ public class PatientAuthService : IPatientAuthService
         _signInManager = signInManager;
         _otpService = otpService;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _externalAuthProviders = externalAuthProviders;
+
         _dateTime = dateTime;
         _logger = logger;
     }
 
     /// <summary>
-    /// الخطوة الأولى والأساسية: التحقق من OTP وإنشاء/جلب المريض وإرجاع JWT قصير المدى
-    /// تُستخدم في: (1) تأكيد الحجز، (2) مشاهدة الحجوزات، (3) أي وصول مؤقت للمريض
+    /// التحقق من OTP وإنشاء/جلب المريض وإرجاع JWT قصير المدى
+    /// purpose بيتحدد من اللي بينادي (AppointmentBooking / ViewBookings / إلخ)
     /// </summary>
     public async Task<Result<PatientAuthResponse>> VerifyOtpAndLoginAsync(
         string phoneNumber,
         string code,
+        OtpPurpose purpose,
         CancellationToken cancellationToken = default)
     {
-        // 1. التحقق من صحة الـ OTP
+        // 1. التحقق من صحة الـ OTP بنفس الـ purpose اللي اتبعت بيه أصلاً
         var validationResult = await _otpService.ValidateOtpAsync(
             phoneNumber,
             code,
-            OtpPurpose.AppointmentBooking,
+            purpose,
             cancellationToken);
 
         if (!validationResult.IsSuccess)
@@ -70,16 +76,19 @@ public class PatientAuthService : IPatientAuthService
 
         // 2. البحث عن المريض برقم الهاتف (بما في ذلك المحذوفين منطقياً للتحقق من الحالة)
         var patient = await _context.Patients
-            .IgnoreQueryFilters() // للتأكد من حالة IsDeleted
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.PhoneNumber == phoneNumber, cancellationToken);
 
-        // 3. إذا كان موجوداً ولكن محذوفاً منطقياً -> لا يمكن استخدامه
         if (patient is not null && patient.IsDeleted)
             return Result<PatientAuthResponse>.Failure(UserErrors.AccountDeactivated);
 
-        // 4. إذا لم يكن موجوداً، نقوم بإنشائه
+        // 3. لو لسه مش موجود بننشئه — لكن ده منطقي بس في حالة AppointmentBooking
+        //    (لو الغرض ViewBookings مثلاً ومفيش Patient خالص، يبقى الرقم غلط أصلاً)
         if (patient is null)
         {
+            if (purpose != OtpPurpose.AppointmentBooking)
+                return Result<PatientAuthResponse>.Failure(UserErrors.NotFound);
+
             patient = new Patient
             {
                 Id = Guid.CreateVersion7(),
@@ -95,13 +104,12 @@ public class PatientAuthService : IPatientAuthService
             _logger.LogInformation("تم إنشاء مريض جديد برقم {PhoneNumber} أثناء تسجيل الدخول بـ OTP", phoneNumber);
         }
 
-        // 5. توليد JWT قصير المدى خاص بالمريض
+        // 4. توليد JWT قصير المدى خاص بالمريض
         var accessToken = _jwtTokenGenerator.GeneratePatientToken(
             patient.Id,
             patient.PhoneNumber,
             patient.FullName);
 
-        // 6. إرجاع الـ Response
         return Result<PatientAuthResponse>.Success(new PatientAuthResponse(
             PatientId: patient.Id,
             AccessToken: accessToken,
@@ -110,9 +118,6 @@ public class PatientAuthService : IPatientAuthService
         ));
     }
 
-    /// <summary>
-    /// إنشاء حساب دائم للمريض (Email + Password) وربطه ببيانات Patient القديمة بعد تأكيد الـ OTP
-    /// </summary>
     public async Task<Result<PatientAuthResponse>> RegisterPermanentAccountAsync(
         string email,
         string password,
@@ -120,7 +125,6 @@ public class PatientAuthService : IPatientAuthService
         string otpCode,
         CancellationToken cancellationToken = default)
     {
-        // 1. التحقق من صحة الـ OTP (بغرض ربط الحساب)
         var validationResult = await _otpService.ValidateOtpAsync(
             phoneNumber,
             otpCode,
@@ -130,23 +134,19 @@ public class PatientAuthService : IPatientAuthService
         if (!validationResult.IsSuccess)
             return Result<PatientAuthResponse>.Failure(validationResult.Errors);
 
-        // 2. البحث عن المريض برقم الهاتف
         var patient = await _context.Patients
             .FirstOrDefaultAsync(p => p.PhoneNumber == phoneNumber && !p.IsDeleted, cancellationToken);
 
         if (patient is null)
             return Result<PatientAuthResponse>.Failure(PatientErrors.PhoneNotRegistered);
 
-        // 3. التأكد من أن المريض ليس لديه حساب دائم بالفعل
         if (patient.IsAccountLinked)
             return Result<PatientAuthResponse>.Failure(PatientErrors.AccountAlreadyLinked);
 
-        // 4. التحقق من أن البريد الإلكتروني غير مستخدم من قبل
         var existingUser = await _userManager.FindByEmailAsync(email);
         if (existingUser is not null)
             return Result<PatientAuthResponse>.Failure(PatientErrors.EmailAlreadyExists);
 
-        // 5. إنشاء مستخدم Identity جديد
         var user = new ApplicationUser
         {
             Id = Guid.CreateVersion7(),
@@ -169,13 +169,11 @@ public class PatientAuthService : IPatientAuthService
             return Result<PatientAuthResponse>.Failure(PatientErrors.AccountCreationFailed);
         }
 
-        // 6. ربط المستخدم بالمريض
         patient.ApplicationUserId = user.Id;
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("تم ربط الحساب الدائم (Email: {Email}) بالمريض (Phone: {PhoneNumber})", email, phoneNumber);
 
-        // 7. توليد JWT للمريض
         var accessToken = _jwtTokenGenerator.GeneratePatientToken(
             patient.Id,
             patient.PhoneNumber,
@@ -189,29 +187,28 @@ public class PatientAuthService : IPatientAuthService
         ));
     }
 
-    /// <summary>
-    /// تسجيل دخول المريض الذي يمتلك حساباً دائماً باستخدام البريد وكلمة السر
-    /// </summary>
     public async Task<Result<PatientAuthResponse>> LoginWithEmailAsync(
         string email,
         string password,
         CancellationToken cancellationToken = default)
     {
-        // 1. البحث عن المستخدم في نظام Identity
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null)
             return Result<PatientAuthResponse>.Failure(UserErrors.InvalidCredentials);
 
-        // 2. التحقق من صحة كلمة المرور
-        var isPasswordValid = await _userManager.CheckPasswordAsync(user, password);
-        if (!isPasswordValid)
-            return Result<PatientAuthResponse>.Failure(UserErrors.InvalidCredentials);
-
-        // 3. التأكد من أن المستخدم نشط
         if (!user.IsActive)
             return Result<PatientAuthResponse>.Failure(UserErrors.AccountDeactivated);
 
-        // 4. البحث عن المريض المرتبط بهذا المستخدم
+        // استخدام SignInManager بدل CheckPasswordAsync المباشرة — عشان يفعّل الـ Lockout
+        // (كان قبل كده Brute-force ممكن يحصل من غير أي حد لعدد المحاولات)
+        var signInResult = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+        if (!signInResult.Succeeded)
+        {
+            if (signInResult.IsLockedOut)
+                return Result<PatientAuthResponse>.Failure(UserErrors.AccountLocked);
+            return Result<PatientAuthResponse>.Failure(UserErrors.InvalidCredentials);
+        }
+
         var patient = await _context.Patients
             .FirstOrDefaultAsync(p => p.ApplicationUserId == user.Id && !p.IsDeleted, cancellationToken);
 
@@ -221,11 +218,9 @@ public class PatientAuthService : IPatientAuthService
             return Result<PatientAuthResponse>.Failure(PatientErrors.NotFound);
         }
 
-        // 5. تحديث آخر وقت دخول
         user.LastLoginAt = _dateTime.Now;
         await _userManager.UpdateAsync(user);
 
-        // 6. توليد JWT للمريض
         var accessToken = _jwtTokenGenerator.GeneratePatientToken(
             patient.Id,
             patient.PhoneNumber,
@@ -239,5 +234,100 @@ public class PatientAuthService : IPatientAuthService
             ExpiresInSeconds: PatientTokenExpirySeconds,
             IsPermanentAccount: true
         ));
+    }
+
+    /// <summary>
+    /// تسجيل دخول/إنشاء حساب مريض بجوجل — يعمل الحساب تلقائيًا لو مش موجود
+    /// (بعكس الـ Staff، لأن أي حد يقدر أصلًا يعمل حساب مريض دائم بنفسه)
+    /// </summary>
+    public async Task<Result<PatientAuthResponse>> LoginWithGoogleAsync(
+        string idToken,
+        CancellationToken cancellationToken = default)
+    {
+        var provider = _externalAuthProviders.FirstOrDefault(p => p.ProviderName == "Google");
+        if (provider is null)
+            return Result<PatientAuthResponse>.Failure(ExternalAuthErrors.InvalidToken);
+
+        var tokenResult = await provider.ValidateTokenAsync(idToken, cancellationToken);
+        if (!tokenResult.IsSuccess)
+            return Result<PatientAuthResponse>.Failure(tokenResult.Errors);
+
+        var externalUser = tokenResult.Data!;
+
+        var user = await _userManager.FindByEmailAsync(externalUser.Email);
+
+        if (user is not null)
+        {
+            // فيه حساب بالفعل بنفس الإيميل — لازم يكون حساب مريض، مش حساب Staff
+            var linkedPatient = await _context.Patients
+                .FirstOrDefaultAsync(p => p.ApplicationUserId == user.Id && !p.IsDeleted, cancellationToken);
+
+            if (linkedPatient is null)
+                return Result<PatientAuthResponse>.Failure(UserErrors.InvalidCredentials); // إيميل ده لحساب Staff مش مريض
+
+            if (!user.IsActive)
+                return Result<PatientAuthResponse>.Failure(UserErrors.AccountDeactivated);
+
+            user.LastLoginAt = _dateTime.Now;
+            await _userManager.UpdateAsync(user);
+
+            var accessToken = _jwtTokenGenerator.GeneratePatientToken(
+                linkedPatient.Id, linkedPatient.PhoneNumber, linkedPatient.FullName);
+
+            return Result<PatientAuthResponse>.Success(new PatientAuthResponse(
+                PatientId: linkedPatient.Id,
+                AccessToken: accessToken,
+                ExpiresInSeconds: PatientTokenExpirySeconds,
+                IsPermanentAccount: true,
+                RequiresPhoneNumber: string.IsNullOrWhiteSpace(linkedPatient.PhoneNumber)));
+        }
+
+        // مفيش حساب خالص — ننشئ ApplicationUser + Patient جديدين (بدون رقم موبايل)
+        var nameParts = externalUser.FullName.Trim().Split(' ', 2);
+
+        var newUser = new ApplicationUser
+        {
+            Id = Guid.CreateVersion7(),
+            UserName = externalUser.Email,
+            Email = externalUser.Email,
+            FirstName = nameParts[0],
+            LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty,
+            AvatarUrl = externalUser.AvatarUrl,
+            EmailConfirmed = true,
+            IsActive = true,
+            CreatedAt = _dateTime.Now
+        };
+
+        var createResult = await _userManager.CreateAsync(newUser);
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+            _logger.LogWarning("فشل إنشاء حساب Google للمريض {Email}: {Errors}", externalUser.Email, errors);
+            return Result<PatientAuthResponse>.Failure(PatientErrors.AccountCreationFailed);
+        }
+
+        var newPatient = new Patient
+        {
+            Id = Guid.CreateVersion7(),
+            PhoneNumber = string.Empty,   // 👈 لسه مفيش رقم — لازم يكمله بعدين
+            FirstName = newUser.FirstName,
+            LastName = newUser.LastName,
+            ApplicationUserId = newUser.Id
+        };
+
+        _context.Patients.Add(newPatient);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("تم إنشاء مريض جديد بجوجل (Email: {Email})", externalUser.Email);
+
+        var newAccessToken = _jwtTokenGenerator.GeneratePatientToken(
+            newPatient.Id, newPatient.PhoneNumber, newPatient.FullName);
+
+        return Result<PatientAuthResponse>.Success(new PatientAuthResponse(
+            PatientId: newPatient.Id,
+            AccessToken: newAccessToken,
+            ExpiresInSeconds: PatientTokenExpirySeconds,
+            IsPermanentAccount: true,
+            RequiresPhoneNumber: true));
     }
 }

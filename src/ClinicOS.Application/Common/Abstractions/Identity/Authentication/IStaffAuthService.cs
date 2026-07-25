@@ -19,6 +19,11 @@ public interface IStaffAuthService
     Task<Result<bool>> LogoutAsync(
         string refreshToken,
         CancellationToken cancellationToken = default);
+
+    // IStaffAuthService.cs — إضافة Method جديدة
+    Task<Result<StaffAuthResponse>> LoginWithGoogleAsync(
+        string idToken,
+        CancellationToken cancellationToken = default);
 }
 
 //public record StaffAuthResponse(

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ClinicOS.Domain.Entities.Patients
+namespace ClinicOS.Domain.Errors.Patients
 {
     /// <summary>
     /// أخطاء خاصة بعمليات المريض (Patient) في النظام

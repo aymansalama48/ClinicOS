@@ -1,5 +1,4 @@
 ﻿using ClinicOS.Domain.Common.Entities;
-using ClinicOS.Domain.Doctors;
 using ClinicOS.Domain.Entities.Appointments;
 using ClinicOS.Domain.Entities.Specializations;
 

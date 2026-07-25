@@ -1,4 +1,6 @@
 using ClinicOS.Application.Common.Constants;
+using Microsoft.AspNetCore.Http;
+using Serilog.Context;
 
 namespace ClinicOS.Api.Middlewares;
 
@@ -25,6 +27,9 @@ public class CorrelationIdMiddleware
             return Task.CompletedTask;
         });
 
-        await _next(context);
+        using (LogContext.PushProperty("CorrelationId", correlationId))
+        {
+            await _next(context);
+        }
     }
 }

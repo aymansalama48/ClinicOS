@@ -4,7 +4,7 @@ using ClinicOS.Domain.Common.Results;
 using ClinicOS.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
-namespace ClinicOS.Infrastructure.External;
+namespace ClinicOS.Infrastructure.External.FileStorage;
 
 internal sealed class LocalFileStorage(IOptions<FileStorageOptions> options) : IFileStorage
 {

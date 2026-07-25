@@ -2,7 +2,7 @@
 using ClinicOS.Domain.Entities.Appointments;
 using ClinicOS.Domain.Enums;
 
-namespace ClinicOS.Domain.Entities.Security;
+namespace ClinicOS.Domain.Entities.OtpVerification;
 
 /// <summary>
 /// سجل مستقل للتحقق عبر OTP

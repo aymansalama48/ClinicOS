@@ -1,6 +1,6 @@
 ﻿using ClinicOS.Domain.Common.Results;
 
-namespace ClinicOS.Domain.Security;
+namespace ClinicOS.Application.Common.Errors.Identity;
 
 // تجميع كافة أخطاء البزنس الخاصة بالـ OTP لسهولة الإدارة وتجنب النصوص المباشرة
 public static class OtpErrors

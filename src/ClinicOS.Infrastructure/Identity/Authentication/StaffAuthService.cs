@@ -1,6 +1,9 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Core;
 using ClinicOS.Application.Common.Abstractions.Identity.Authentication;
+using ClinicOS.Application.Common.Abstractions.Identity.Authorization;
+using ClinicOS.Application.Common.Abstractions.Identity.Providers;
 using ClinicOS.Application.Common.Abstractions.Identity.Tokens;
+using ClinicOS.Application.Common.Errors.Identity;
 using ClinicOS.Application.Common.Errors.Users;
 using ClinicOS.Application.Features.Accounts.Shared;
 using ClinicOS.Domain.Common.Results;
@@ -21,8 +24,11 @@ public class StaffAuthService : IStaffAuthService
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IPermissionService _permissionService;   // 👈 مضافة بدل الـ Claims المباشرة
     private readonly IDateTime _dateTime;
-    private readonly AppDbContext _context; // ✅ إضافة DbContext
+    private readonly AppDbContext _context;
+    private readonly IEnumerable<IExternalAuthProvider> _externalAuthProviders;   // 👈 جديدة في الكونستركتور
+
     private readonly ILogger<StaffAuthService> _logger;
 
     public StaffAuthService(
@@ -30,38 +36,38 @@ public class StaffAuthService : IStaffAuthService
         SignInManager<ApplicationUser> signInManager,
         IJwtTokenGenerator jwtTokenGenerator,
         IRefreshTokenService refreshTokenService,
+        IPermissionService permissionService,
         IDateTime dateTime,
-        AppDbContext context, // ✅ حقن DbContext
+        AppDbContext context,
+        IEnumerable<IExternalAuthProvider> externalAuthProviders,
         ILogger<StaffAuthService> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _jwtTokenGenerator = jwtTokenGenerator;
         _refreshTokenService = refreshTokenService;
+        _permissionService = permissionService;
         _dateTime = dateTime;
         _context = context;
+        _externalAuthProviders = externalAuthProviders;
         _logger = logger;
     }
 
-    /// <summary>
-    /// تسجيل دخول موظف بالداش بورد (Admin / Doctor / Receptionist) عبر البريد وكلمة السر
-    /// </summary>
     public async Task<Result<StaffAuthResponse>> LoginAsync(
         string email,
         string password,
         CancellationToken cancellationToken = default)
     {
-        // 1. البحث عن المستخدم
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null)
             return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials);
 
-        // 2. التحقق من أن الحساب نشط
         if (!user.IsActive)
             return Result<StaffAuthResponse>.Failure(UserErrors.AccountDeactivated);
 
-        // 3. التحقق من كلمة المرور
-        var signInResult = await _signInManager.PasswordSignInAsync(user, password, false, true);
+        // CheckPasswordSignInAsync بدل PasswordSignInAsync — عشان منعملش Cookie Sign-in
+        // غير مطلوب في API قايم على JWT بس، مع الاحتفاظ بنفس فايدة الـ Lockout
+        var signInResult = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
         if (!signInResult.Succeeded)
         {
             if (signInResult.IsLockedOut)
@@ -71,16 +77,13 @@ public class StaffAuthService : IStaffAuthService
             return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials);
         }
 
-        // 4. جلب الأدوار
         var roles = await _userManager.GetRolesAsync(user);
 
-        // 5. جلب الصلاحيات من قاعدة البيانات
-        var permissions = await GetUserPermissionsAsync(user.Id, cancellationToken);
+        // الصلاحيات دلوقتي بتيجي من IPermissionService (Role-based) بدل Claims مباشرة على اليوزر
+        var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
 
-        // 6. جلب الـ SpecializationId (إن كان طبيباً أو موظف استقبال)
         var specializationId = await GetSpecializationIdAsync(user.Id, cancellationToken);
 
-        // 7. توليد الـ Access Token
         var accessToken = _jwtTokenGenerator.GenerateStaffToken(
             user.Id,
             user.Email!,
@@ -89,16 +92,13 @@ public class StaffAuthService : IStaffAuthService
             permissions,
             specializationId);
 
-        // 8. إنشاء Refresh Token
         var refreshToken = await _refreshTokenService.GenerateAndSaveRefreshTokenAsync(user.Id, cancellationToken);
 
-        // 9. تحديث آخر وقت دخول
         user.LastLoginAt = _dateTime.Now;
         await _userManager.UpdateAsync(user);
 
         _logger.LogInformation("تم تسجيل دخول الموظف {Email} بنجاح", email);
 
-        // 10. إرجاع الـ Response
         return Result<StaffAuthResponse>.Success(new StaffAuthResponse
         {
             UserId = user.Id,
@@ -112,63 +112,87 @@ public class StaffAuthService : IStaffAuthService
         });
     }
 
-    /// <summary>
-    /// تسجيل الخروج وإبطال الـ Refresh Token
-    /// </summary>
     public async Task<Result<bool>> LogoutAsync(
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
-        // إلغاء الـ Refresh Token المقدم
         await _refreshTokenService.RevokeRefreshTokenAsync(refreshToken, cancellationToken);
-
-        // تسجيل الخروج من الـ SignIn (جلسة الـ Cookies إن وجدت)
         await _signInManager.SignOutAsync();
 
         _logger.LogInformation("تم تسجيل خروج الموظف بنجاح (Refresh Token: {Token})", refreshToken);
 
         return Result<bool>.Success(true);
     }
-
-    // ===== دوال مساعدة =====
-
     /// <summary>
-    /// جلب قائمة الصلاحيات الخاصة بالمستخدم من قاعدة البيانات
+    /// دخول Staff بجوجل — لا ينشئ حساب جديد أبدًا، لازم يكون الحساب موجود بالفعل
+    /// (اتعمل من قبل عن طريق نظام الدعوات) وإلا نظام الدعوات بيبقى بلا فايدة
     /// </summary>
-    private async Task<IList<string>> GetUserPermissionsAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task<Result<StaffAuthResponse>> LoginWithGoogleAsync(
+        string idToken,
+        CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var provider = _externalAuthProviders.FirstOrDefault(p => p.ProviderName == "Google");
+        if (provider is null)
+            return Result<StaffAuthResponse>.Failure(ExternalAuthErrors.InvalidToken);
+
+        var tokenResult = await provider.ValidateTokenAsync(idToken, cancellationToken);
+        if (!tokenResult.IsSuccess)
+            return Result<StaffAuthResponse>.Failure(tokenResult.Errors);
+
+        var externalUser = tokenResult.Data!;
+
+        var user = await _userManager.FindByEmailAsync(externalUser.Email);
         if (user is null)
-            return new List<string>();
+            return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials); // "محتاج دعوة من الأدمن الأول"
 
-        // استخدام الـ Claims المخزنة في Identity
-        var claims = await _userManager.GetClaimsAsync(user);
-        return claims
-            .Where(c => c.Type == "permission")
-            .Select(c => c.Value)
-            .ToList();
+        if (!user.IsActive)
+            return Result<StaffAuthResponse>.Failure(UserErrors.AccountDeactivated);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        if (roles.Count == 0)
+            return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials); // مش حساب Staff فعليًا
+
+        var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
+        var specializationId = await GetSpecializationIdAsync(user.Id, cancellationToken);
+
+        var accessToken = _jwtTokenGenerator.GenerateStaffToken(
+            user.Id, user.Email!, user.FullName, roles, permissions, specializationId);
+
+        var refreshToken = await _refreshTokenService.GenerateAndSaveRefreshTokenAsync(user.Id, cancellationToken);
+
+        user.LastLoginAt = _dateTime.Now;
+        await _userManager.UpdateAsync(user);
+
+        _logger.LogInformation("تم تسجيل دخول الموظف {Email} بجوجل", externalUser.Email);
+
+        return Result<StaffAuthResponse>.Success(new StaffAuthResponse
+        {
+            UserId = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresInSeconds = 3600,
+            Roles = roles.ToList(),
+            SpecializationId = specializationId
+        });
     }
-
     /// <summary>
     /// جلب معرف التخصص للموظف (إن كان طبيباً أو موظف استقبال)
+    /// ملحوظة: نفس المنطق ده مستخدم برضه في RefreshTokenService — مرشّح للاستخراج
+    /// لخدمة مشتركة لو احتجت تعدّله في مكان واحد بس مستقبلًا
     /// </summary>
     private async Task<Guid?> GetSpecializationIdAsync(Guid userId, CancellationToken cancellationToken)
     {
-        // 1. البحث في جدول الأطباء
         var doctor = await _context.Doctors
             .FirstOrDefaultAsync(d => d.ApplicationUserId == userId && !d.IsDeleted, cancellationToken);
 
         if (doctor is not null)
             return doctor.SpecializationId;
 
-        // 2. البحث في جدول موظفي الاستقبال
         var receptionist = await _context.Receptionists
             .FirstOrDefaultAsync(r => r.ApplicationUserId == userId && !r.IsDeleted, cancellationToken);
 
-        if (receptionist is not null)
-            return receptionist.SpecializationId;
-
-        // 3. إذا كان Admin أو ليس له تخصص، نرجع null
-        return null;
+        return receptionist?.SpecializationId;
     }
 }

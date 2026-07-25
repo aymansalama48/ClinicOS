@@ -1,15 +1,15 @@
-﻿using ClinicOS.Domain.Entities;
+﻿using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Domain.Entities;
 using ClinicOS.Domain.Entities.Appointments;
 using ClinicOS.Domain.Entities.Doctors;
 using ClinicOS.Domain.Entities.MedicalRecords;
+using ClinicOS.Domain.Entities.OtpVerification;
 using ClinicOS.Domain.Entities.Patients;
 using ClinicOS.Domain.Entities.Prescriptions;
 using ClinicOS.Domain.Entities.Receptionists;
-using ClinicOS.Domain.Entities.Security;
 using ClinicOS.Domain.Entities.Specializations;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using ClinicOS.Infrastructure.Persistence.Outbox;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
@@ -19,7 +19,7 @@ namespace ClinicOS.Infrastructure.Persistence.Data
     /// <summary>
     /// السياق الرئيسي لقاعدة البيانات
     /// </summary>
-    public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
+    public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>, IApplicationDbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options)

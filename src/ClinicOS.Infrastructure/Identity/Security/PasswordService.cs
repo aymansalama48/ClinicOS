@@ -1,6 +1,6 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Identity.Security;
+using ClinicOS.Application.Common.Errors.Identity;
 using ClinicOS.Domain.Common.Results;
-using ClinicOS.Domain.Security;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;

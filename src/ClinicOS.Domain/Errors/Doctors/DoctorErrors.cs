@@ -1,6 +1,6 @@
 ﻿using ClinicOS.Domain.Common.Results;
 
-namespace ClinicOS.Domain.Doctors;
+namespace ClinicOS.Domain.Errors.Doctors;
 
 // تجميع كافة أخطاء البزنس الخاصة بالطبيب لسهولة الإدارة وتجنب النصوص المباشرة
 public static class DoctorErrors

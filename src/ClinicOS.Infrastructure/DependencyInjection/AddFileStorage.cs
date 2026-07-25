@@ -1,5 +1,5 @@
 ﻿using ClinicOS.Application.Common.Abstractions.External.FileStorage;
-using ClinicOS.Infrastructure.External;
+using ClinicOS.Infrastructure.External.FileStorage;
 using ClinicOS.Infrastructure.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

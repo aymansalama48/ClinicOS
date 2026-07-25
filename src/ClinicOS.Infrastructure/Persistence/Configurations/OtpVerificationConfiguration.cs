@@ -1,4 +1,4 @@
-﻿using ClinicOS.Domain.Entities.Security;
+﻿using ClinicOS.Domain.Entities.OtpVerification;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

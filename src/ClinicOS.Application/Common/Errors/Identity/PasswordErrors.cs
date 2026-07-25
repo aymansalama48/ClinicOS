@@ -1,7 +1,6 @@
 ﻿using ClinicOS.Domain.Common.Results;
 
-namespace ClinicOS.Domain.Security;
-
+namespace ClinicOS.Application.Common.Errors.Identity;
 public static class PasswordErrors
 {
     public static readonly Error UserNotFound = new(

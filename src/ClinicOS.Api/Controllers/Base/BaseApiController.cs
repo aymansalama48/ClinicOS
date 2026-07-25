@@ -1,11 +1,9 @@
 using ClinicOS.Api.Extensions;
 using ClinicOS.Domain.Common.Results;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers.Base;
 
 [ApiController]
 [Route("api/[controller]")]

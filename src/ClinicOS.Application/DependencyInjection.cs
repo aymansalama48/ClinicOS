@@ -17,7 +17,7 @@ public static class DependencyInjection
         // 1. تسجيل MediatR للتعامل مع الـ Commands والـ Queries والـ Event Handlers
         services.AddMediatR(cfg =>
         {
-            cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+            cfg.RegisterServicesFromAssembly(assembly);
 
             // 1. Logging أولاً لتتبع بداية ونهاية كل Request
             cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
@@ -31,7 +31,13 @@ public static class DependencyInjection
             // 4. Validation للتأكد من صحة المدخلات
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 
-            // 5. Transaction أخيراً لإدارة المعاملة أثناء تنفيذ الـ Handler
+            // 5. Caching (Read) قراءة الكاش للـ Queries المؤهلة فقط
+            cfg.AddOpenBehavior(typeof(CachingBehavior<,>));
+
+            // 6. Cache Invalidation مسح الكاش للـ Commands الناجحة فقط
+            cfg.AddOpenBehavior(typeof(CacheInvalidationBehavior<,>));
+
+            // 7. Transaction أخيراً لإدارة المعاملة أثناء تنفيذ الـ Handler
             cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));
         });
 

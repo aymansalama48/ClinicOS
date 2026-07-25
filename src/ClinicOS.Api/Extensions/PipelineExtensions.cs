@@ -3,7 +3,6 @@ using ClinicOS.Api.Middlewares;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Serilog;
 
 namespace ClinicOS.Api.Extensions;
 
@@ -17,9 +16,9 @@ public static class PipelineExtensions
         // 1. تشغيل Correlation ID في أسرع نقطة دخول للطلب لتتبع الـ Requests
         app.UseMiddleware<CorrelationIdMiddleware>();
 
-        // 2. معالجة الاستثناءات وتسجيل الـ Requests عبر Serilog
+        // 2. معالجة الاستثناءات وتسجيل الـ Requests عبر Serilog بالخيارات المخصصة
         app.UseExceptionHandler();
-        app.UseSerilogRequestLogging();
+        app.UseSerilogLogging(); // 👈 استبدال app.UseSerilogRequestLogging() هنا
 
         // 3. التوجيه الآمن والـ CORS
         app.UseHttpsRedirection();

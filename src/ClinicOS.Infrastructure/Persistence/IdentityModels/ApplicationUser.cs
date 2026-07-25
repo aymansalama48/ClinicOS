@@ -1,4 +1,3 @@
-using ClinicOS.Domain.Doctors;
 using ClinicOS.Domain.Entities.Doctors;
 using ClinicOS.Domain.Entities.Patients;
 using ClinicOS.Domain.Entities.Receptionists;
