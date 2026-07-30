@@ -6,17 +6,44 @@
 public abstract class BaseEmailTemplateModel
 {
     /// <summary>
-    /// اسم العيادة (يظهر في توقيع البريد)
+    /// اسم العيادة (يظهر في الهيدر وتوقيع البريد)
     /// </summary>
     public string ClinicName { get; set; } = "ClinicOS";
 
     /// <summary>
-    /// رابط موقع العيادة (اختياري)
+    /// رابط شعار/لوجو العيادة
+    /// </summary>
+    public string? ClinicLogoUrl { get; set; }
+
+    /// <summary>
+    /// بريد الدعم الفني أو بريد التواصل للعيادة
+    /// </summary>
+    public string SupportEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// رقم هاتف العيادة للتواصل (اختياري)
+    /// </summary>
+    public string? PhoneNumber { get; set; }
+
+    /// <summary>
+    /// عنوان العيادة الرئيسي (اختياري)
+    /// </summary>
+    public string? Address { get; set; }
+
+    /// <summary>
+    /// رابط موقع العيادة الإلكتروني
     /// </summary>
     public string? WebsiteUrl { get; set; }
 
     /// <summary>
-    /// سنة حقوق النشر الحالية
+    /// روابط منصات التواصل الاجتماعي (اختياري للفوتر)
     /// </summary>
-    public string Year => DateTime.Now.Year.ToString();
+    public string? FacebookUrl { get; set; }
+    public string? InstagramUrl { get; set; }
+    public string? WhatsAppNumber { get; set; }
+
+    /// <summary>
+    /// سنة حقوق النشر الحالية (تولد ديناميكياً)
+    /// </summary>
+    public string Year => DateTime.UtcNow.Year.ToString();
 }

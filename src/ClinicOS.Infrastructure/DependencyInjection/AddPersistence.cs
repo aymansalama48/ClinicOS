@@ -1,4 +1,5 @@
-﻿using ClinicOS.Infrastructure.BackgroundJobs;
+﻿using ClinicOS.Application.Common.Abstractions.Persistence; // 👈 تأكد من إضافة الـ Namespace ده
+using ClinicOS.Infrastructure.BackgroundJobs;
 using ClinicOS.Infrastructure.Persistence.Data;
 using ClinicOS.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
@@ -32,8 +33,16 @@ public static partial class DependencyInjection
                        insertOutboxInterceptor);
         });
 
+        // 👈 2.1 ربط الـ Interface بالـ DbContext الفعلي (هذا السطر المطلوب)
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
         // 3. تسجيل الـ Outbox Process Job
-        services.AddHostedService<ProcessOutboxMessagesJob>();
+        //services.AddHostedService<ProcessOutboxMessagesJob>();
+        
+        
+        // ✅ واكتب مكانه تسجيل الكلاس كـ Scoped:
+        services.AddScoped<ProcessOutboxMessagesJob>();
+
 
         return services;
     }

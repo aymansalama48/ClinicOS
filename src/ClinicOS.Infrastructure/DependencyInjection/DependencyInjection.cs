@@ -1,6 +1,8 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Core;
+using ClinicOS.Application.Common.Abstractions.External.Routing;
 using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Infrastructure.Core;
+using ClinicOS.Infrastructure.External.Routing;
 using ClinicOS.Infrastructure.Identity.CurrentUser;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,15 +23,16 @@ public static partial class DependencyInjection
     {
         services
                .AddCoreServices()                    // الخدمات الأساسية
-               .AddCaching()                         // ✅ تسجيل خدمات الـ Caching
+               .AddCaching()                         // تسجيل خدمات الـ Caching
                .AddPersistence(configuration)        // قاعدة البيانات
+               .AddHangfireJobs(configuration)       // ✅ تسجيل خدمات Hangfire
                .AddJwtAuthentication(configuration)  // التوثيق
                .AddExternalAuth(configuration)       // تسجيل المصادقة الخارجية (Google Auth)
                .AddMail(configuration)               // البريد الإلكتروني
                .AddFileStorage(configuration)        // تخزين الملفات
                .AddBaseUrl(configuration)            // الروابط الأساسية
                .AddOtpService(configuration)         // إضافة OTP Service
-               .AddIdentityServices();               // إضافة خدمات Identity
+               .AddIdentityServices();               // إضافة خدمات Identity            // إضافة خدمات Identity
 
         return services;
     }
@@ -50,6 +53,12 @@ public static partial class DependencyInjection
 
         // تسجيل خدمة تتبع معرف الطلب الفريد (Correlation ID)
         services.AddScoped<ICorrelationContext, CorrelationContext>();
+
+        // تسجيل خدمة جلب معرف التخصص المرتبط بالمستخدم (إن كان Doctor أو Receptionist)
+        services.AddScoped<ISpecializationService, SpecializationService>();
+
+        // تسجيل خدمة توليد الروابط الأساسية للتطبيق
+        services.AddScoped<IApplicationUrlService, ApplicationUrlService>();
 
         return services;
     }

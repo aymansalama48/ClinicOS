@@ -1,8 +1,10 @@
-using System.IO;
 using ClinicOS.Api.Middlewares;
+using ClinicOS.Infrastructure.BackgroundJobs;
+using Hangfire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using System.IO;
 
 namespace ClinicOS.Api.Extensions;
 
@@ -13,6 +15,11 @@ public static class PipelineExtensions
     /// </summary>
     public static WebApplication UseApplicationPipeline(this WebApplication app)
     {
+
+
+
+
+
         // 1. تشغيل Correlation ID في أسرع نقطة دخول للطلب لتتبع الـ Requests
         app.UseMiddleware<CorrelationIdMiddleware>();
 
@@ -44,7 +51,19 @@ public static class PipelineExtensions
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // 7. ربط الـ Controllers
+
+        // 7. تفعيل شاشة Hangfire للمراقبة
+        app.UseHangfireDashboard("/hangfire", new DashboardOptions
+        {
+            Authorization = new[] { new HangfireCustomAuthorizationFilter() }
+        });
+        RecurringJob.AddOrUpdate<ProcessOutboxMessagesJob>(
+            "process-outbox-messages",
+            job => job.ProcessAsync(),
+            "*/5 * * * * *"); // Cron Expression للتكرار كل 5 ثوانٍ
+
+
+        // 8. ربط الـ Controllers
         app.MapControllers();
 
         return app;

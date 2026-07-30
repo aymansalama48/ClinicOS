@@ -19,8 +19,7 @@ namespace ClinicOS.Application.Common.Abstractions.Identity.Security
         /// <summary>
         /// إرسال رابط إعادة تعيين كلمة المرور إلى البريد الإلكتروني.
         /// </summary>
-        Task<Result> ForgotPasswordAsync(string email, CancellationToken cancellationToken);
-
+        Task<Result<string>> ForgotPasswordAsync(string email, CancellationToken cancellationToken);
 
         /// <summary>
         /// إعادة تعيين كلمة المرور باستخدام الـ Token.

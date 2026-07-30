@@ -1,8 +1,10 @@
-﻿using ClinicOS.Application.Common.Abstractions.External.Email;
+﻿using ClinicOS.Application.Common.Abstractions.Core;
+using ClinicOS.Application.Common.Abstractions.External.Email;
 using ClinicOS.Application.Common.Abstractions.External.Email.Constants;
 using ClinicOS.Application.Common.Abstractions.External.Email.Models;
 using ClinicOS.Application.Common.Abstractions.External.Email.Models.Base;
 using ClinicOS.Application.Common.Abstractions.External.Email.Models.Templates;
+using ClinicOS.Infrastructure.Core;
 using ClinicOS.Infrastructure.Options;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -18,14 +20,20 @@ namespace ClinicOS.Infrastructure.External.Email;
 public class SmtpEmailSender : IEmailSender
 {
     private readonly MailOptions _mailSettings;
+    private readonly BaseUrlOptions _baseUrlOptions;
     private readonly EmailTemplateEngine _templateEngine;
+    private readonly IDateTime _dateTimeProvider; // <--- حقن خدمة التاريخ والوقت
 
     public SmtpEmailSender(
         IOptions<MailOptions> mailSettings,
-        EmailTemplateEngine templateEngine)
+        IOptions<BaseUrlOptions> baseUrlOptions,
+        EmailTemplateEngine templateEngine,
+        IDateTime dateTimeProvider) // <--- حقن في الـ Constructor
     {
         _mailSettings = mailSettings.Value;
+        _baseUrlOptions = baseUrlOptions.Value;
         _templateEngine = templateEngine;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     /// <summary>
@@ -126,6 +134,8 @@ public class SmtpEmailSender : IEmailSender
         string templateName,
         TModel model) where TModel : BaseEmailTemplateModel
     {
+        PopulateDefaultBaseData(model);
+
         // 1. تحويل القالب إلى HTML
         var body = await _templateEngine.RenderTemplateAsync(templateName, model);
 
@@ -136,10 +146,43 @@ public class SmtpEmailSender : IEmailSender
             Subject = $"{subject} - {model.ClinicName}",
             Body = body,
             IsHtml = true,
-            SenderDisplayName = model.ClinicName // يظهر للمستلم اسم العيادة
+            SenderDisplayName = model.ClinicName
         };
 
         await SendEmailAsync(request);
+    }
+
+    /// <summary>
+    /// تعبئة بيانات افتراضية/وهمية للنموذج الأب BaseEmailTemplateModel
+    /// </summary>
+    private void PopulateDefaultBaseData(BaseEmailTemplateModel model)
+    {
+        if (string.IsNullOrWhiteSpace(model.ClinicName))
+            model.ClinicName = "ClinicOS";
+
+        if (string.IsNullOrWhiteSpace(model.ClinicLogoUrl))
+            model.ClinicLogoUrl = $"{_baseUrlOptions.Frontend}/assets/images/logo.png";
+
+        if (string.IsNullOrWhiteSpace(model.SupportEmail))
+            model.SupportEmail = "support@clinicos.com";
+
+        if (string.IsNullOrWhiteSpace(model.PhoneNumber))
+            model.PhoneNumber = "+201000000000";
+
+        if (string.IsNullOrWhiteSpace(model.Address))
+            model.Address = "القاهرة، مصر";
+
+        if (string.IsNullOrWhiteSpace(model.WebsiteUrl))
+            model.WebsiteUrl = _baseUrlOptions.Frontend;
+
+        if (string.IsNullOrWhiteSpace(model.FacebookUrl))
+            model.FacebookUrl = "https://facebook.com/clinicos";
+
+        if (string.IsNullOrWhiteSpace(model.InstagramUrl))
+            model.InstagramUrl = "https://instagram.com/clinicos";
+
+        if (string.IsNullOrWhiteSpace(model.WhatsAppNumber))
+            model.WhatsAppNumber = "+201000000000";
     }
 
     // ==========================================================
@@ -147,32 +190,87 @@ public class SmtpEmailSender : IEmailSender
     // ==========================================================
 
     public async Task SendEmailConfirmationAsync(string email, EmailConfirmationTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تأكيد بريدك الإلكتروني", EmailTemplateNames.EmailConfirmation, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+        if (string.IsNullOrWhiteSpace(model.Email)) model.Email = email;
+        if (string.IsNullOrWhiteSpace(model.ConfirmationLink))
+            model.ConfirmationLink = $"{_baseUrlOptions.Frontend}/confirm-email";
+
+        await SendTemplateEmailAsync(email, "تأكيد بريدك الإلكتروني", EmailTemplateNames.EmailConfirmation, model);
+    }
 
     public async Task SendResetPasswordEmailAsync(string email, ResetPasswordTemplateModel model)
-        => await SendTemplateEmailAsync(email, "إعادة تعيين كلمة المرور", EmailTemplateNames.ResetPassword, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+        if (string.IsNullOrWhiteSpace(model.Email)) model.Email = email;
+        if (string.IsNullOrWhiteSpace(model.ResetLink))
+            model.ResetLink = $"{_baseUrlOptions.Frontend}/reset-password";
+
+        await SendTemplateEmailAsync(email, "إعادة تعيين كلمة المرور", EmailTemplateNames.ResetPassword, model);
+    }
 
     public async Task SendWelcomeEmailAsync(string email, WelcomeTemplateModel model)
-        => await SendTemplateEmailAsync(email, "مرحباً بك في ClinicOS", EmailTemplateNames.Welcome, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+        if (string.IsNullOrWhiteSpace(model.LoginUrl))
+            model.LoginUrl = $"{_baseUrlOptions.Frontend}/login";
+
+        await SendTemplateEmailAsync(email, "مرحباً بك في ClinicOS", EmailTemplateNames.Welcome, model);
+    }
 
     public async Task SendPasswordChangedEmailAsync(string email, PasswordChangedTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تم تغيير كلمة المرور", EmailTemplateNames.PasswordChanged, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+
+        // استخدام خدمة التاريخ والتوقيت المعتمدة
+        if (model.ChangedAt == default) model.ChangedAt = _dateTimeProvider.Now;
+
+        await SendTemplateEmailAsync(email, "تم تغيير كلمة المرور", EmailTemplateNames.PasswordChanged, model);
+    }
 
     public async Task SendAccountLockedEmailAsync(string email, AccountLockedTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تم قفل حسابك", EmailTemplateNames.AccountLocked, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+        if (string.IsNullOrWhiteSpace(model.UnlockUrl))
+            model.UnlockUrl = $"{_baseUrlOptions.Frontend}/support";
+
+        await SendTemplateEmailAsync(email, "تم قفل حسابك", EmailTemplateNames.AccountLocked, model);
+    }
 
     public async Task SendAccountUnlockedEmailAsync(string email, AccountUnlockedTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تم فتح قفل حسابك", EmailTemplateNames.AccountUnlocked, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+        if (string.IsNullOrWhiteSpace(model.LoginUrl))
+            model.LoginUrl = $"{_baseUrlOptions.Frontend}/login";
+
+        await SendTemplateEmailAsync(email, "تم فتح قفل حسابك", EmailTemplateNames.AccountUnlocked, model);
+    }
 
     public async Task SendRoleAssignedEmailAsync(string email, RoleAssignedTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تم تعيين دور جديد لك", EmailTemplateNames.RoleAssigned, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+        if (string.IsNullOrWhiteSpace(model.RoleName)) model.RoleName = "مستخدم";
+        if (string.IsNullOrWhiteSpace(model.DashboardUrl))
+            model.DashboardUrl = $"{_baseUrlOptions.Frontend}/dashboard";
+
+        await SendTemplateEmailAsync(email, "تم تعيين دور جديد لك", EmailTemplateNames.RoleAssigned, model);
+    }
 
     public async Task SendRoleRemovedEmailAsync(string email, RoleRemovedTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تم إزالة دورك", EmailTemplateNames.RoleRemoved, model);
+    {
+        if (string.IsNullOrWhiteSpace(model.UserName)) model.UserName = "المستخدم العزيز";
+        if (string.IsNullOrWhiteSpace(model.RoleName)) model.RoleName = "مستخدم";
+
+        await SendTemplateEmailAsync(email, "تم إزالة دورك", EmailTemplateNames.RoleRemoved, model);
+    }
 
     public async Task SendAppointmentConfirmationAsync(string email, AppointmentConfirmationTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تأكيد حجز موعد", EmailTemplateNames.AppointmentConfirmation, model);
+    {
+        await SendTemplateEmailAsync(email, "تأكيد حجز موعد", EmailTemplateNames.AppointmentConfirmation, model);
+    }
 
     public async Task SendAppointmentReminderAsync(string email, AppointmentReminderTemplateModel model)
-        => await SendTemplateEmailAsync(email, "تذكير بموعدك", EmailTemplateNames.AppointmentReminder, model);
+    {
+        await SendTemplateEmailAsync(email, "تذكير بموعدك", EmailTemplateNames.AppointmentReminder, model);
+    }
 }

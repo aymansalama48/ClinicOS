@@ -44,26 +44,23 @@ public class PasswordService : IPasswordService
         return Result.Success();
     }
 
-    public async Task<Result> ForgotPasswordAsync(
-        string email,
-        CancellationToken cancellationToken)
+    public async Task<Result<string>> ForgotPasswordAsync(
+            string email,
+            CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByEmailAsync(email);
 
-        // ملحوظة أمان مهمة: برضه بترجع Success حتى لو المستخدم مش موجود
-        // عشان محدش يقدر يستخدم الـ Endpoint ده "يتحقق" إن إيميل معين مسجل عندنا ولا لأ (Email Enumeration)
+        // حماية Email Enumeration: نرجع Success بقيمة فارغة
         if (user is null)
-            return Result.Success();
+            return Result<string>.Success(string.Empty);
 
         var rawToken = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        // التوكن اللي Identity بترجّعه فيه رموز خاصة، لازم ترمّزه لـ URL-Safe قبل ما تحطه في اللينك
+        // ترميز الـ Token
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
 
-        // TODO: تبعت اللينك ده عن طريق IEmailSender بتاعتك (مش موجودة عندي هنا)
-        // مثال: await _emailSender.SendPasswordResetEmailAsync(email, encodedToken, cancellationToken);
-
-        return Result.Success();
+        // ✅ إرجاع التوكن المرمّز بداخل الـ Result
+        return Result<string>.Success(encodedToken);
     }
 
     public async Task<Result> ResetPasswordAsync(

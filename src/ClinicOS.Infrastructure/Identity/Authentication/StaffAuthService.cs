@@ -26,6 +26,7 @@ public class StaffAuthService : IStaffAuthService
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IPermissionService _permissionService;   // 👈 مضافة بدل الـ Claims المباشرة
     private readonly IDateTime _dateTime;
+    private readonly ISpecializationService _specializationService;
     private readonly AppDbContext _context;
     private readonly IEnumerable<IExternalAuthProvider> _externalAuthProviders;   // 👈 جديدة في الكونستركتور
 
@@ -38,6 +39,7 @@ public class StaffAuthService : IStaffAuthService
         IRefreshTokenService refreshTokenService,
         IPermissionService permissionService,
         IDateTime dateTime,
+        ISpecializationService specializationService,
         AppDbContext context,
         IEnumerable<IExternalAuthProvider> externalAuthProviders,
         ILogger<StaffAuthService> logger)
@@ -48,6 +50,7 @@ public class StaffAuthService : IStaffAuthService
         _refreshTokenService = refreshTokenService;
         _permissionService = permissionService;
         _dateTime = dateTime;
+        _specializationService = specializationService;
         _context = context;
         _externalAuthProviders = externalAuthProviders;
         _logger = logger;
@@ -82,7 +85,7 @@ public class StaffAuthService : IStaffAuthService
         // الصلاحيات دلوقتي بتيجي من IPermissionService (Role-based) بدل Claims مباشرة على اليوزر
         var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
 
-        var specializationId = await GetSpecializationIdAsync(user.Id, cancellationToken);
+        var specializationId = await _specializationService.GetSpecializationIdAsync(user.Id, cancellationToken);
 
         var accessToken = _jwtTokenGenerator.GenerateStaffToken(
             user.Id,
@@ -153,7 +156,7 @@ public class StaffAuthService : IStaffAuthService
             return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials); // مش حساب Staff فعليًا
 
         var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
-        var specializationId = await GetSpecializationIdAsync(user.Id, cancellationToken);
+        var specializationId = await _specializationService.GetSpecializationIdAsync(user.Id, cancellationToken);
 
         var accessToken = _jwtTokenGenerator.GenerateStaffToken(
             user.Id, user.Email!, user.FullName, roles, permissions, specializationId);
@@ -176,23 +179,5 @@ public class StaffAuthService : IStaffAuthService
             Roles = roles.ToList(),
             SpecializationId = specializationId
         });
-    }
-    /// <summary>
-    /// جلب معرف التخصص للموظف (إن كان طبيباً أو موظف استقبال)
-    /// ملحوظة: نفس المنطق ده مستخدم برضه في RefreshTokenService — مرشّح للاستخراج
-    /// لخدمة مشتركة لو احتجت تعدّله في مكان واحد بس مستقبلًا
-    /// </summary>
-    private async Task<Guid?> GetSpecializationIdAsync(Guid userId, CancellationToken cancellationToken)
-    {
-        var doctor = await _context.Doctors
-            .FirstOrDefaultAsync(d => d.ApplicationUserId == userId && !d.IsDeleted, cancellationToken);
-
-        if (doctor is not null)
-            return doctor.SpecializationId;
-
-        var receptionist = await _context.Receptionists
-            .FirstOrDefaultAsync(r => r.ApplicationUserId == userId && !r.IsDeleted, cancellationToken);
-
-        return receptionist?.SpecializationId;
     }
 }

@@ -24,6 +24,7 @@ public class RefreshTokenService : IRefreshTokenService
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IPermissionService _permissionService;   // 👈 مضافة
     private readonly IDateTime _dateTime;
+    private readonly ISpecializationService _specializationService;
     private readonly ILogger<RefreshTokenService> _logger;
 
     private static readonly TimeSpan RefreshTokenExpiry = TimeSpan.FromDays(7);
@@ -33,6 +34,7 @@ public class RefreshTokenService : IRefreshTokenService
         UserManager<ApplicationUser> userManager,
         IJwtTokenGenerator jwtTokenGenerator,
         IPermissionService permissionService,
+        ISpecializationService specializationService,
         IDateTime dateTime,
         ILogger<RefreshTokenService> logger)
     {
@@ -40,6 +42,7 @@ public class RefreshTokenService : IRefreshTokenService
         _userManager = userManager;
         _jwtTokenGenerator = jwtTokenGenerator;
         _permissionService = permissionService;
+        _specializationService = specializationService;
         _dateTime = dateTime;
         _logger = logger;
     }
@@ -92,7 +95,7 @@ public class RefreshTokenService : IRefreshTokenService
         var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
 
         // اتصلحت: كانت مثبتة null، دلوقتي بتتجاب فعليًا زي الـ Login بالظبط
-        var specializationId = await GetSpecializationIdAsync(user.Id, cancellationToken);
+        var specializationId = await _specializationService.GetSpecializationIdAsync(user.Id, cancellationToken);
 
         var accessToken = _jwtTokenGenerator.GenerateStaffToken(
             user.Id,
@@ -152,24 +155,6 @@ public class RefreshTokenService : IRefreshTokenService
         _logger.LogInformation("تم إلغاء جميع Refresh Tokens للمستخدم {UserId} (عدد: {Count})", userId, tokens.Count);
 
         return Result.Success($"تم إلغاء {tokens.Count} جلسة");
-    }
-
-    /// <summary>
-    /// نفس منطق GetSpecializationIdAsync الموجود في StaffAuthService بالظبط —
-    /// مرشّح للاستخراج لخدمة مشتركة لاحقًا بدل التكرار في الملفين
-    /// </summary>
-    private async Task<Guid?> GetSpecializationIdAsync(Guid userId, CancellationToken cancellationToken)
-    {
-        var doctor = await _context.Doctors
-            .FirstOrDefaultAsync(d => d.ApplicationUserId == userId && !d.IsDeleted, cancellationToken);
-
-        if (doctor is not null)
-            return doctor.SpecializationId;
-
-        var receptionist = await _context.Receptionists
-            .FirstOrDefaultAsync(r => r.ApplicationUserId == userId && !r.IsDeleted, cancellationToken);
-
-        return receptionist?.SpecializationId;
     }
 
     private static string GenerateSecureToken()

@@ -1,4 +1,5 @@
 using ClinicOS.Api.Extensions;
+using ClinicOS.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,5 +13,6 @@ var app = builder.Build();
 
 // 3. تطبيق خط سير الطلبات الموحد (Request Pipeline)
 app.UseApplicationPipeline();
-
+// 🚀 تشغيل الـ Database Seeder المعتمد
+await app.SeedDatabaseAsync();
 app.Run();
