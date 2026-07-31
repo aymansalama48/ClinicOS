@@ -1,4 +1,4 @@
-﻿using ClinicOS.Application.Features.Accounts.Shared;
+﻿using ClinicOS.Application.Features.Accounts.StaffAuth.Shared;
 using ClinicOS.Domain.Common.Results;
 
 namespace ClinicOS.Application.Common.Abstractions.Identity.Authentication;

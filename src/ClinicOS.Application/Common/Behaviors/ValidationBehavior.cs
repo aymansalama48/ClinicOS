@@ -1,3 +1,4 @@
+using ClinicOS.Application.Common.Helpers;
 using ClinicOS.Domain.Common.Results;
 using FluentValidation;
 using MediatR;
@@ -33,19 +34,14 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
 
         if (failures.Count != 0)
         {
-            var errorMessages = failures.Select(f => f.ErrorMessage).ToList();
+            var errorMessages = string.Join(" | ", failures.Select(f => f.ErrorMessage));
 
-            if (typeof(TResponse).IsGenericType &&
-                typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>))
-            {
-                var method = typeof(TResponse).GetMethod("Failure", new[] { typeof(IEnumerable<string>) });
-                return (TResponse)method?.Invoke(null, new object[] { errorMessages })!;
-            }
+            var error = new Error(
+                "Validation.Failed",
+                errorMessages,
+                ErrorType.Validation);
 
-            if (typeof(TResponse) == typeof(Result))
-            {
-                return (TResponse)(object)Result.Failure(errorMessages);
-            }
+            return ResultFactory.CreateFailure<TResponse>(error);
         }
 
         return await next();

@@ -1,5 +1,5 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Identity.Authentication;
-using ClinicOS.Application.Features.Accounts.Shared;
+using ClinicOS.Application.Features.Accounts.StaffAuth.Shared;
 using ClinicOS.Domain.Common.Results;
 using System;
 using System.Collections.Generic;

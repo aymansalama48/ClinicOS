@@ -1,6 +1,6 @@
 ﻿using ClinicOS.Domain.Common.Entities;
 
-namespace ClinicOS.Domain.Entities;
+namespace ClinicOS.Domain.Entities.AuditLogs;
 
 /// <summary>
 /// سجل التدقيق المركزي

@@ -9,11 +9,8 @@ public abstract class BaseEmailTemplateModel
     /// اسم العيادة (يظهر في الهيدر وتوقيع البريد)
     /// </summary>
     public string ClinicName { get; set; } = "ClinicOS";
+    public string? ClinicAddress { get; set; }
 
-    /// <summary>
-    /// رابط شعار/لوجو العيادة
-    /// </summary>
-    public string? ClinicLogoUrl { get; set; }
 
     /// <summary>
     /// بريد الدعم الفني أو بريد التواصل للعيادة
@@ -23,7 +20,7 @@ public abstract class BaseEmailTemplateModel
     /// <summary>
     /// رقم هاتف العيادة للتواصل (اختياري)
     /// </summary>
-    public string? PhoneNumber { get; set; }
+    public string? ClinicPhoneNumber { get; set; }
 
     /// <summary>
     /// عنوان العيادة الرئيسي (اختياري)

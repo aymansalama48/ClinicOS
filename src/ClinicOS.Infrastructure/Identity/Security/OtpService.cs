@@ -13,19 +13,17 @@ using System.Text;
 
 namespace ClinicOS.Infrastructure.Identity.Security;
 
-public class OtpService : IOtpService
+/// <summary>
+/// تنفيذ خدمة OTP — توليد وتحقق وإعادة إرسال أكواد التحقق برقم الموبايل
+/// </summary>
+public class OtpService(
+    AppDbContext context,
+    IOptions<OtpOptions> options,
+    IDateTime dateTime) : IOtpService
 {
-    private readonly AppDbContext _context;
-    private readonly OtpOptions _options;
-    private readonly IDateTime _dateTime;
-
-    public OtpService(AppDbContext context, IOptions<OtpOptions> options, IDateTime dateTime)
-    {
-        _context = context;
-        _options = options.Value;
-        _dateTime = dateTime;
-    }
-
+    /// <summary>
+    /// توليد OTP جديد — بيلغي أي كود سابق شغال لنفس الرقم/الغرض ويحفظ الكود بشكل مشفر
+    /// </summary>
     public async Task<Result<OtpGenerationResult>> GenerateOtpAsync(
         string phoneNumber,
         OtpPurpose purpose,
@@ -34,19 +32,19 @@ public class OtpService : IOtpService
     {
         // 1. إلغاء أي كود سابق لسه شغال لنفس الرقم ونفس الغرض
         //    (يمنع وجود أكتر من كود صالح في نفس الوقت لنفس الرقم/الغرض)
-        var oldActiveOtps = await _context.OtpVerifications
+        var oldActiveOtps = await context.OtpVerifications
             .Where(o => o.Phone == phoneNumber
                      && o.Purpose == purpose
                      && !o.IsConsumed
-                     && o.Expiry > _dateTime.Now)
+                     && o.Expiry > dateTime.Now)
             .ToListAsync(cancellationToken);
 
         foreach (var old in oldActiveOtps)
             old.IsConsumed = true;
 
         // 2. توليد كود عشوائي آمن كريبتوجرافيًا (مش System.Random العادي)
-        var code = GenerateSecureNumericCode(_options.CodeLength);
-        var now = _dateTime.Now;
+        var code = GenerateSecureNumericCode(options.Value.CodeLength);
+        var now = dateTime.Now;
 
         var otp = new OtpVerification
         {
@@ -55,15 +53,15 @@ public class OtpService : IOtpService
             Purpose = purpose,
             AppointmentId = appointmentId,
             CodeHash = HashCode(code, phoneNumber),
-            Expiry = now.Add(_options.Expiry),
-            NextResendAllowedAtUtc = now.Add(_options.ResendCooldown),
+            Expiry = now.Add(options.Value.Expiry),
+            NextResendAllowedAtUtc = now.Add(options.Value.ResendCooldown),
             AttemptsCount = 0,
-            MaxAttempts = _options.MaxAttempts,
+            MaxAttempts = options.Value.MaxAttempts,
             IsConsumed = false
         };
 
-        _context.OtpVerifications.Add(otp);
-        await _context.SaveChangesAsync(cancellationToken);
+        context.OtpVerifications.Add(otp);
+        await context.SaveChangesAsync(cancellationToken);
 
         // الكود الحقيقي بيترجع هنا بس — اللي بينادي الميثود دي هو المسؤول عن إرسال SMS
         // (الـ OtpService نفسها ملهاش أي علاقة بطريقة الإرسال)
@@ -76,13 +74,16 @@ public class OtpService : IOtpService
         });
     }
 
+    /// <summary>
+    /// التحقق من الـ OTP — مع عدد محاولات محدود ومقارنة آمنة ضد الـ Timing Attacks
+    /// </summary>
     public async Task<Result> ValidateOtpAsync(
         string phoneNumber,
         string code,
         OtpPurpose purpose,
         CancellationToken cancellationToken)
     {
-        var otp = await _context.OtpVerifications
+        var otp = await context.OtpVerifications
             .Where(o => o.Phone == phoneNumber && o.Purpose == purpose && !o.IsConsumed)
             .OrderByDescending(o => o.Expiry)
             .FirstOrDefaultAsync(cancellationToken);
@@ -90,13 +91,13 @@ public class OtpService : IOtpService
         if (otp is null)
             return Result.Failure(OtpErrors.NotFound);
 
-        if (otp.Expiry < _dateTime.Now)
+        if (otp.Expiry < dateTime.Now)
             return Result.Failure(OtpErrors.Expired);
 
         if (otp.IsMaxAttemptsReached)
         {
             otp.IsConsumed = true; // اتقفل نهائي، لازم كود جديد
-            await _context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
             return Result.Failure(OtpErrors.MaxAttemptsExceeded);
         }
 
@@ -110,43 +111,46 @@ public class OtpService : IOtpService
         if (!isMatch)
         {
             otp.AttemptsCount++;
-            await _context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
             return Result.Failure(OtpErrors.InvalidCode);
         }
 
         otp.IsConsumed = true;
-        otp.VerifiedAt = _dateTime.Now;
-        await _context.SaveChangesAsync(cancellationToken);
+        otp.VerifiedAt = dateTime.Now;
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
 
+    /// <summary>
+    /// إعادة إرسال OTP — مع احترام فترة الـ Cooldown بين كل إرسال والتاني
+    /// </summary>
     public async Task<Result<OtpGenerationResult>> ResendOtpAsync(
         string phoneNumber,
         OtpPurpose purpose,
         CancellationToken cancellationToken)
     {
-        var lastOtp = await _context.OtpVerifications
+        var lastOtp = await context.OtpVerifications
             .Where(o => o.Phone == phoneNumber && o.Purpose == purpose)
             .OrderByDescending(o => o.Expiry)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (lastOtp is not null && lastOtp.NextResendAllowedAtUtc > _dateTime.Now)
+        if (lastOtp is not null && lastOtp.NextResendAllowedAtUtc > dateTime.Now)
             return Result<OtpGenerationResult>.Failure(OtpErrors.ResendTooSoon);
 
         // إعادة الإرسال = توليد كود جديد بالكامل (أبسط وأأمن من محاولة إعادة استخدام القديم)
         return await GenerateOtpAsync(phoneNumber, purpose, lastOtp?.AppointmentId, cancellationToken);
     }
 
+    // تشفير الكود مع رقم الموبايل — نفس الكود على رقمين مختلفين يطلع Hash مختلف
     private string HashCode(string code, string phoneNumber)
     {
-        // بنضيف رقم الموبايل جوه الـ Hash عشان نفس الكود على رقمين مختلفين
-        // يطلع Hash مختلف (يمنع مقارنة الكودات ببعض عبر الأرقام)
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_options.HashingSecret));
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(options.Value.HashingSecret));
         var bytes = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{phoneNumber}:{code}"));
         return Convert.ToBase64String(bytes);
     }
 
+    // توليد كود رقمي آمن كريبتوجرافيًا
     private static string GenerateSecureNumericCode(int length)
     {
         var min = (int)Math.Pow(10, length - 1);

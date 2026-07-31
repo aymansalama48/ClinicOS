@@ -11,6 +11,7 @@ builder.Services.AddApplicationServices(builder.Configuration);
 
 var app = builder.Build();
 
+
 // 3. تطبيق خط سير الطلبات الموحد (Request Pipeline)
 app.UseApplicationPipeline();
 // 🚀 تشغيل الـ Database Seeder المعتمد

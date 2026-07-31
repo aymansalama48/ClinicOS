@@ -4,7 +4,7 @@ using ClinicOS.Application.Common.Abstractions.Identity.Authorization;
 using ClinicOS.Application.Common.Abstractions.Identity.Tokens;
 using ClinicOS.Application.Common.Errors.Identity;
 using ClinicOS.Application.Common.Errors.Users;
-using ClinicOS.Application.Features.Accounts.Shared;
+using ClinicOS.Application.Features.Accounts.StaffAuth.Shared;
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Infrastructure.Persistence.Data;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
@@ -17,39 +17,23 @@ namespace ClinicOS.Infrastructure.Identity.Tokens;
 /// <summary>
 /// تنفيذ خدمة Refresh Token الخاصة بالموظفين (Staff)
 /// </summary>
-public class RefreshTokenService : IRefreshTokenService
+public class RefreshTokenService(
+    AppDbContext context,
+    UserManager<ApplicationUser> userManager,
+    IJwtTokenGenerator jwtTokenGenerator,
+    IPermissionService permissionService,   // 👈 مضافة
+    ISpecializationService specializationService,
+    IDateTime dateTime,
+    ILogger<RefreshTokenService> logger) : IRefreshTokenService
 {
-    private readonly AppDbContext _context;
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IJwtTokenGenerator _jwtTokenGenerator;
-    private readonly IPermissionService _permissionService;   // 👈 مضافة
-    private readonly IDateTime _dateTime;
-    private readonly ISpecializationService _specializationService;
-    private readonly ILogger<RefreshTokenService> _logger;
-
     private static readonly TimeSpan RefreshTokenExpiry = TimeSpan.FromDays(7);
 
-    public RefreshTokenService(
-        AppDbContext context,
-        UserManager<ApplicationUser> userManager,
-        IJwtTokenGenerator jwtTokenGenerator,
-        IPermissionService permissionService,
-        ISpecializationService specializationService,
-        IDateTime dateTime,
-        ILogger<RefreshTokenService> logger)
-    {
-        _context = context;
-        _userManager = userManager;
-        _jwtTokenGenerator = jwtTokenGenerator;
-        _permissionService = permissionService;
-        _specializationService = specializationService;
-        _dateTime = dateTime;
-        _logger = logger;
-    }
-
+    /// <summary>
+    /// توليد Refresh Token آمن وحفظه في قاعدة البيانات
+    /// </summary>
     public async Task<string> GenerateAndSaveRefreshTokenAsync(Guid userId, CancellationToken cancellationToken)
     {
-       // await RevokeAllUserTokensAsync(userId, cancellationToken);
+        // await RevokeAllUserTokensAsync(userId, cancellationToken);
 
         var token = GenerateSecureToken();
 
@@ -58,22 +42,25 @@ public class RefreshTokenService : IRefreshTokenService
             Id = Guid.CreateVersion7(),
             UserId = userId,
             Token = token,
-            ExpiryDate = _dateTime.Now.Add(RefreshTokenExpiry),
-            CreatedAt = _dateTime.Now,
+            ExpiryDate = dateTime.Now.Add(RefreshTokenExpiry),
+            CreatedAt = dateTime.Now,
             IsRevoked = false
         };
 
-        _context.RefreshTokens.Add(refreshToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        context.RefreshTokens.Add(refreshToken);
+        await context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("تم إنشاء Refresh Token جديد للمستخدم {UserId}", userId);
+        logger.LogInformation("تم إنشاء Refresh Token جديد للمستخدم {UserId}", userId);
 
         return token;
     }
 
+    /// <summary>
+    /// تبديل الـ Refresh Token — بيلغي القديم ويرجع Access Token + Refresh Token جديدين
+    /// </summary>
     public async Task<Result<StaffAuthResponse>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
     {
-        var storedToken = await _context.RefreshTokens
+        var storedToken = await context.RefreshTokens
             .FirstOrDefaultAsync(rt => rt.Token == refreshToken, cancellationToken);
 
         if (storedToken is null)
@@ -82,22 +69,22 @@ public class RefreshTokenService : IRefreshTokenService
         if (storedToken.IsRevoked)
             return Result<StaffAuthResponse>.Failure(TokenErrors.TokenRevoked);
 
-        if (storedToken.ExpiryDate < _dateTime.Now)
+        if (storedToken.ExpiryDate < dateTime.Now)
             return Result<StaffAuthResponse>.Failure(TokenErrors.TokenExpired);
 
-        var user = await _userManager.FindByIdAsync(storedToken.UserId.ToString());
+        var user = await userManager.FindByIdAsync(storedToken.UserId.ToString());
         if (user is null)
             return Result<StaffAuthResponse>.Failure(UserErrors.NotFound);
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var roles = await userManager.GetRolesAsync(user);
 
         // نفس مصدر الصلاحيات المستخدم في LoginAsync بالظبط
-        var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
+        var permissions = await permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
 
         // اتصلحت: كانت مثبتة null، دلوقتي بتتجاب فعليًا زي الـ Login بالظبط
-        var specializationId = await _specializationService.GetSpecializationIdAsync(user.Id, cancellationToken);
+        var specializationId = await specializationService.GetSpecializationIdAsync(user.Id, cancellationToken);
 
-        var accessToken = _jwtTokenGenerator.GenerateStaffToken(
+        var accessToken = jwtTokenGenerator.GenerateStaffToken(
             user.Id,
             user.Email!,
             user.FullName,
@@ -106,7 +93,7 @@ public class RefreshTokenService : IRefreshTokenService
             specializationId);
 
         storedToken.IsRevoked = true;
-        storedToken.LastUsedAt = _dateTime.Now;
+        storedToken.LastUsedAt = dateTime.Now;
 
         var newRefreshToken = await GenerateAndSaveRefreshTokenAsync(user.Id, cancellationToken);
 
@@ -123,24 +110,30 @@ public class RefreshTokenService : IRefreshTokenService
         });
     }
 
+    /// <summary>
+    /// إلغاء Refresh Token معين
+    /// </summary>
     public async Task RevokeRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
     {
-        var storedToken = await _context.RefreshTokens
+        var storedToken = await context.RefreshTokens
             .FirstOrDefaultAsync(rt => rt.Token == refreshToken, cancellationToken);
 
         if (storedToken is not null)
         {
             storedToken.IsRevoked = true;
-            storedToken.LastUsedAt = _dateTime.Now;
-            await _context.SaveChangesAsync(cancellationToken);
+            storedToken.LastUsedAt = dateTime.Now;
+            await context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("تم إلغاء Refresh Token: {Token}", refreshToken);
+            logger.LogInformation("تم إلغاء Refresh Token: {Token}", refreshToken);
         }
     }
 
+    /// <summary>
+    /// إلغاء كل جلسات اليوزر (كل الأجهزة) — بتتستخدم عند تعطيل الحساب مثلاً
+    /// </summary>
     public async Task<Result> RevokeAllUserTokensAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var tokens = await _context.RefreshTokens
+        var tokens = await context.RefreshTokens
             .Where(rt => rt.UserId == userId && !rt.IsRevoked)
             .ToListAsync(cancellationToken);
 
@@ -150,13 +143,14 @@ public class RefreshTokenService : IRefreshTokenService
         foreach (var token in tokens)
             token.IsRevoked = true;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("تم إلغاء جميع Refresh Tokens للمستخدم {UserId} (عدد: {Count})", userId, tokens.Count);
+        logger.LogInformation("تم إلغاء جميع Refresh Tokens للمستخدم {UserId} (عدد: {Count})", userId, tokens.Count);
 
         return Result.Success($"تم إلغاء {tokens.Count} جلسة");
     }
 
+    // توليد توكن عشوائي آمن كريبتوجرافيًا
     private static string GenerateSecureToken()
     {
         using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();

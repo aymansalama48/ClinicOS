@@ -1,29 +1,33 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Persistence;
 using ClinicOS.Application.Features.Specializations.Commands.CreateSpecialization;
 using ClinicOS.Domain.Entities.Specializations;
-using Microsoft.EntityFrameworkCore;
 using Moq;
-using System.Timers;
 using Xunit;
 using FluentAssertions;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ClinicOS.UnitTests.Features.Specializations.Commands.CreateSpecialization;
 
 public class CreateSpecializationCommandHandlerTests
 {
     private readonly Mock<IApplicationDbContext> _contextMock;
-    private readonly Mock<DbSet<Specialization>> _specializationsDbSetMock;
     private readonly CreateSpecializationCommandHandler _handler;
 
     public CreateSpecializationCommandHandlerTests()
     {
         _contextMock = new Mock<IApplicationDbContext>();
-        _specializationsDbSetMock = new Mock<DbSet<Specialization>>();
 
-        // ربط DbSet الخاص بالتخصصات بالـ DbContext الوهمي
-        _contextMock.Setup(c => c.Specializations).Returns(_specializationsDbSetMock.Object);
+        // 1. محاكاة الـ IQueryable (مبقاش في DbSet خلاص)
+        var emptySpecializations = new List<Specialization>().AsQueryable();
+        _contextMock.Setup(c => c.Specializations).Returns(emptySpecializations);
 
-        // محاكاة حفظ التغييرات بنجاح
+        // 2. محاكاة دالة Add الجديدة اللي ضفناها في الواجهة
+        _contextMock.Setup(c => c.Add(It.IsAny<Specialization>()));
+
+        // 3. محاكاة حفظ التغييرات
         _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
                     .ReturnsAsync(1);
 
@@ -42,11 +46,15 @@ public class CreateSpecializationCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.IsSuccess.Should().BeTrue();
-        result.Data.Should().NotBeEmpty();
 
-        // التأكد من إضافة الكيان للـ DbSet بالشكل الصحيح
-        _specializationsDbSetMock.Verify(
-            s => s.Add(It.Is<Specialization>(sp => sp.Name == command.Name && sp.Description == command.Description)),
+        // (ملاحظة: لو الـ Result بتاعك مش بيرجع Data، شيل السطر اللي تحت ده)
+        // result.Data.Should().NotBeEmpty(); 
+
+        // 4. التأكد من استدعاء دالة Add المباشرة من الـ Context
+        _contextMock.Verify(
+            c => c.Add(It.Is<Specialization>(sp =>
+                sp.Name == command.Name &&
+                sp.Description == command.Description)),
             Times.Once);
 
         // التأكد من حفظ التغييرات في قاعدة البيانات

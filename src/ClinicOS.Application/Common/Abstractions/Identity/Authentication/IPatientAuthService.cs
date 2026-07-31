@@ -1,4 +1,5 @@
-﻿using ClinicOS.Domain.Common.Results;
+﻿using ClinicOS.Application.Features.Accounts.PatientAuth.Shared;
+using ClinicOS.Domain.Common.Results;
 using ClinicOS.Domain.Enums;
 
 namespace ClinicOS.Application.Common.Abstractions.Identity.Authentication;
@@ -9,7 +10,7 @@ public interface IPatientAuthService
     /// التحقق من OTP وإنشاء/جلب المريض وإرجاع JWT قصير المدى
     /// يُستخدم لأي غرض (تأكيد حجز / مشاهدة حجوزات) حسب الـ purpose الممرر
     /// </summary>
-    Task<Result<PatientAuthResponse>> VerifyOtpAndLoginAsync(
+    Task<Result<PatientAuthResponse>> LoginWithOtpAsync(
         string phoneNumber,
         string code,
         OtpPurpose purpose,   // 👈 مضافة
@@ -32,9 +33,3 @@ public interface IPatientAuthService
         CancellationToken cancellationToken = default);
 }
 
-public record PatientAuthResponse(
-    Guid PatientId,
-    string AccessToken,
-    int ExpiresInSeconds,
-    bool IsPermanentAccount,
-    bool RequiresPhoneNumber = false);

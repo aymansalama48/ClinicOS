@@ -77,6 +77,7 @@ public static partial class DependencyInjection
         // ----- خدمات الأمان -----
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IPermissionManagementService, PermissionManagementService>();
 
         // ----- خدمات المصادقة -----
         services.AddScoped<IPatientAuthService, PatientAuthService>();

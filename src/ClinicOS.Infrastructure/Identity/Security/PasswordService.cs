@@ -8,27 +8,27 @@ using System.Text;
 
 namespace ClinicOS.Infrastructure.Identity.Security;
 
-public class PasswordService : IPasswordService
+/// <summary>
+/// تنفيذ خدمة إدارة الباسورد — تغيير/استعادة/إعادة تعيين
+/// </summary>
+public class PasswordService(
+    UserManager<ApplicationUser> userManager) : IPasswordService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-
-    public PasswordService(UserManager<ApplicationUser> userManager)
-    {
-        _userManager = userManager;
-    }
-
+    /// <summary>
+    /// تغيير الباسورد — بيتحقق من الباسورد الحالي الأول
+    /// </summary>
     public async Task<Result> ChangePasswordAsync(
         Guid userId,
         string currentPassword,
         string newPassword,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Result.Failure(PasswordErrors.UserNotFound);
 
         // UserManager بتاع Identity مش بياخد CancellationToken في الـ Methods بتاعته أصلاً (قيد في المكتبة نفسها)
-        var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
 
         if (!result.Succeeded)
         {
@@ -44,17 +44,20 @@ public class PasswordService : IPasswordService
         return Result.Success();
     }
 
+    /// <summary>
+    /// طلب استعادة الباسورد — بيرجع توكن الاستعادة (مع حماية Email Enumeration)
+    /// </summary>
     public async Task<Result<string>> ForgotPasswordAsync(
             string email,
             CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByEmailAsync(email);
+        var user = await userManager.FindByEmailAsync(email);
 
         // حماية Email Enumeration: نرجع Success بقيمة فارغة
         if (user is null)
             return Result<string>.Success(string.Empty);
 
-        var rawToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var rawToken = await userManager.GeneratePasswordResetTokenAsync(user);
 
         // ترميز الـ Token
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
@@ -63,13 +66,16 @@ public class PasswordService : IPasswordService
         return Result<string>.Success(encodedToken);
     }
 
+    /// <summary>
+    /// إعادة تعيين الباسورد بالتوكن المرسل — برسائل عامة متقولش تفاصيل عن الإيميل
+    /// </summary>
     public async Task<Result> ResetPasswordAsync(
         string email,
         string token,
         string newPassword,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByEmailAsync(email);
+        var user = await userManager.FindByEmailAsync(email);
         if (user is null)
             return Result.Failure(PasswordErrors.ResetFailed); // نفس رسالة عامة، متقولش "الإيميل غلط" تحديدًا
 
@@ -83,7 +89,7 @@ public class PasswordService : IPasswordService
             return Result.Failure(PasswordErrors.ResetFailed);
         }
 
-        var result = await _userManager.ResetPasswordAsync(user, decodedToken, newPassword);
+        var result = await userManager.ResetPasswordAsync(user, decodedToken, newPassword);
 
         return result.Succeeded
             ? Result.Success()

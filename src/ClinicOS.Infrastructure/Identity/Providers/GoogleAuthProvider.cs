@@ -1,28 +1,28 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Identity.Providers;
 using ClinicOS.Application.Common.Errors.Identity;
 using ClinicOS.Domain.Common.Results;
-
 using ClinicOS.Infrastructure.Options;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.SqlServer.Server;
 
 namespace ClinicOS.Infrastructure.Identity.Providers;
 
-public sealed class GoogleAuthProvider : IExternalAuthProvider
+/// <summary>
+/// مزود الدخول بجوجل — بيتحقق من الـ Google ID Token ويرجع بيانات اليوزر
+/// </summary>
+public sealed class GoogleAuthProvider(
+    IOptions<GoogleAuthOptions> options,
+    ILogger<GoogleAuthProvider> logger) : IExternalAuthProvider
 {
-    private readonly GoogleAuthOptions _options;
-    private readonly ILogger<GoogleAuthProvider> _logger;
-
-    public GoogleAuthProvider(IOptions<GoogleAuthOptions> options, ILogger<GoogleAuthProvider> logger)
-    {
-        _options = options.Value;
-        _logger = logger;
-    }
-
+    /// <summary>
+    /// اسم المزود (Google)
+    /// </summary>
     public string ProviderName => "Google";
 
+    /// <summary>
+    /// التحقق من صلاحية توكن جوجل وإرجاع بيانات اليوزر الخارجي
+    /// </summary>
     public async Task<Result<ExternalUserResult>> ValidateTokenAsync(
         string idToken,
         CancellationToken cancellationToken)   // 👈 مضافة، زي كل مكان تاني في المشروع
@@ -31,8 +31,8 @@ public sealed class GoogleAuthProvider : IExternalAuthProvider
         {
             var settings = new GoogleJsonWebSignature.ValidationSettings();
 
-            if (!string.IsNullOrWhiteSpace(_options.ClientId))
-                settings.Audience = new[] { _options.ClientId };
+            if (!string.IsNullOrWhiteSpace(options.Value.ClientId))
+                settings.Audience = new[] { options.Value.ClientId };
 
             // ملحوظة: المكتبة دي مالهاش Overload بياخد CancellationToken (قيد خارجي زي UserManager بالظبط)
             var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
@@ -51,12 +51,12 @@ public sealed class GoogleAuthProvider : IExternalAuthProvider
         }
         catch (InvalidJwtException ex)
         {
-            _logger.LogWarning(ex, "توكن Google غير صالح");
+            logger.LogWarning(ex, "توكن Google غير صالح");
             return Result<ExternalUserResult>.Failure(ExternalAuthErrors.InvalidToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "خطأ غير متوقع أثناء التحقق من توكن Google");
+            logger.LogError(ex, "خطأ غير متوقع أثناء التحقق من توكن Google");
             return Result<ExternalUserResult>.Failure(ExternalAuthErrors.InvalidToken);
         }
     }

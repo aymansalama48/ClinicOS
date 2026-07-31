@@ -33,13 +33,12 @@ public static partial class DependencyInjection
                        insertOutboxInterceptor);
         });
 
-        // 👈 2.1 ربط الـ Interface بالـ DbContext الفعلي (هذا السطر المطلوب)
-        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
-        // 3. تسجيل الـ Outbox Process Job
-        //services.AddHostedService<ProcessOutboxMessagesJob>();
-        
-        
+
+        // 👇 تسجيل الـ Adapter ليربط الواجهة بالكلاس الجديد
+        services.AddScoped<IApplicationDbContext, ApplicationDbContextAdapter>();
+
+
         // ✅ واكتب مكانه تسجيل الكلاس كـ Scoped:
         services.AddScoped<ProcessOutboxMessagesJob>();
 

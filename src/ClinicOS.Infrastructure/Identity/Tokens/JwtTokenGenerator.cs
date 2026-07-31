@@ -10,16 +10,16 @@ using System.Text;
 
 namespace ClinicOS.Infrastructure.Identity.Tokens;
 
-public class JwtTokenGenerator : IJwtTokenGenerator
+/// <summary>
+/// مولّد توكنات JWT — للمريض والـ Staff
+/// </summary>
+public class JwtTokenGenerator(
+    IOptions<JwtOptions> options,
+    IDateTime dateTime) : IJwtTokenGenerator
 {
-    private readonly JwtOptions _options;
-
-    private readonly IDateTime _dateTime;
-    public JwtTokenGenerator(IOptions<JwtOptions> options, IDateTime dateTime)
-    {
-        _options = options.Value;
-        _dateTime = dateTime;
-    }
+    /// <summary>
+    /// توليد توكن المريض — بيعتمد على الـ PatientId ورقم الموبايل
+    /// </summary>
     public string GeneratePatientToken(
         Guid patientId,
         string phoneNumber,
@@ -35,9 +35,12 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         if (!string.IsNullOrWhiteSpace(fullName))
             claims.Add(new Claim(ClaimTypes.Name, fullName));
 
-        return BuildToken(claims, _options.PatientExpiryMinutes);
+        return BuildToken(claims, options.Value.PatientExpiryMinutes);
     }
 
+    /// <summary>
+    /// توليد توكن الـ Staff — بيعتمد على الـ UserId والأدوار والصلاحيات والتخصص
+    /// </summary>
     public string GenerateStaffToken(
         Guid userId,
         string email,
@@ -63,19 +66,20 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         if (specializationId.HasValue)
             claims.Add(new Claim(CustomClaims.SpecializationId, specializationId.Value.ToString()));
 
-        return BuildToken(claims, _options.StaffExpiryMinutes);
+        return BuildToken(claims, options.Value.StaffExpiryMinutes);
     }
 
+    // بناء التوكن النهائي بالـ Claims ومدة الصلاحية
     private string BuildToken(List<Claim> claims, int expiryMinutes)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.Value.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _options.Issuer,
-            audience: _options.Audience,
+            issuer: options.Value.Issuer,
+            audience: options.Value.Audience,
             claims: claims,
-expires: _dateTime.Now.AddMinutes(expiryMinutes), // أو _dateTime.UtcNow
+            expires: dateTime.Now.AddMinutes(expiryMinutes), // أو dateTime.UtcNow
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

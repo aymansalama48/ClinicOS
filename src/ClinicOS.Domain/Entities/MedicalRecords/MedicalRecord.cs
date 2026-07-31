@@ -1,7 +1,6 @@
 ﻿using ClinicOS.Domain.Common.Entities;
 using ClinicOS.Domain.Entities.Appointments;
 using ClinicOS.Domain.Entities.Prescriptions;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace ClinicOS.Domain.Entities.MedicalRecords;
 

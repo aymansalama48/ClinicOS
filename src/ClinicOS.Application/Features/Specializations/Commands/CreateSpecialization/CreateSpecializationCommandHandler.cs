@@ -24,7 +24,7 @@ public sealed class CreateSpecializationCommandHandler
 
         var specialization = new Specialization(request.Name, request.Description);
 
-        _context.Specializations.Add(specialization);
+        _context.Add(specialization);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(specialization.Id);

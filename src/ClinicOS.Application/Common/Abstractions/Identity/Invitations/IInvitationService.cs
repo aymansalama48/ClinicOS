@@ -1,38 +1,47 @@
-﻿using ClinicOS.Domain.Common.Results;
+﻿namespace ClinicOS.Application.Common.Abstractions.Identity.Invitations;
 
-namespace ClinicOS.Application.Common.Abstractions.Identity.Invitations;
+using ClinicOS.Domain.Common.Results;
 
 public interface IInvitationService
 {
     /// <summary>
-    /// إنشاء دعوة لموظف جديد (Doctor / Receptionist) وتوليد رابط آمن
+    /// 1. إنشاء دعوة لموظف جديد (Doctor / Receptionist / Admin) وتوليد رابط إيميل
     /// </summary>
     Task<Result<string>> SendStaffInvitationAsync(
         string email,
         string role,
-        Guid? specializationId,
+        Guid? specializationId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// التحقق من صحة توكن الدعوة قبل عرض صفحة إنشاء الحساب للموظف
+    /// 2. التحقق من صحة توكن الدعوة قبل عرض صفحة التسجيل للموظف
     /// </summary>
     Task<Result<InvitationDetailsDto>> ValidateInvitationTokenAsync(
         string invitationToken,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// إكمال الموظف لبياناته وإنشاء حساب ApplicationUser مرتبط برابط الدعوة
+    /// 3. إبطال / إلغاء دعوة معلقة بواسطة الأدمن
+    /// </summary>
+    Task<Result> RevokeInvitationAsync(
+        Guid invitationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 4. إكمال الموظف لبياناته وإنشاء حساب ApplicationUser والبروفايل الخاص بدوره
     /// </summary>
     Task<Result<bool>> AcceptInvitationAndCreateAccountAsync(
         string invitationToken,
         string fullName,
         string password,
+        string? phoneNumber = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 5. إكمال الموظف لبياناته وإنشاء حسابه عن طريق حساب جوجل (بدون كلمة مرور)
+    /// </summary>
+    Task<Result<bool>> AcceptInvitationWithGoogleAsync(
+        string invitationToken,
+        string googleIdToken,
         CancellationToken cancellationToken = default);
 }
-
-public record InvitationDetailsDto(
-    string Email,
-    string Role,
-    Guid? SpecializationId,
-    bool IsValid
-);

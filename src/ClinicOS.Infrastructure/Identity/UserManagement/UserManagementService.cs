@@ -2,7 +2,6 @@
 using ClinicOS.Application.Common.Abstractions.Identity.Tokens;
 using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Errors.Users;
-using ClinicOS.Application.Features.Accounts.Shared;
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using Microsoft.AspNetCore.Identity;
@@ -14,25 +13,12 @@ namespace ClinicOS.Infrastructure.Identity.UserManagement;
 /// <summary>
 /// تنفيذ خدمة إدارة المستخدمين (تخدم Staff والمريض صاحب الحساب الدائم)
 /// </summary>
-public class UserManagementService : IUserManagementService
+public class UserManagementService(
+    UserManager<ApplicationUser> userManager,
+    IRefreshTokenService refreshTokenService,
+    IDateTime dateTime,
+    ILogger<UserManagementService> logger) : IUserManagementService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IRefreshTokenService _refreshTokenService;
-    private readonly IDateTime _dateTime;
-    private readonly ILogger<UserManagementService> _logger;
-
-    public UserManagementService(
-        UserManager<ApplicationUser> userManager,
-        IRefreshTokenService refreshTokenService,
-        IDateTime dateTime,
-        ILogger<UserManagementService> logger)
-    {
-        _userManager = userManager;
-        _refreshTokenService = refreshTokenService;
-        _dateTime = dateTime;
-        _logger = logger;
-    }
-
     /// <summary>
     /// جلب بيانات المستخدم بواسطة المعرف
     /// </summary>
@@ -40,11 +26,11 @@ public class UserManagementService : IUserManagementService
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Result<UserDto>.Failure(UserErrors.NotFound);
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var roles = await userManager.GetRolesAsync(user);
 
         return Result<UserDto>.Success(new UserDto
         {
@@ -64,7 +50,7 @@ public class UserManagementService : IUserManagementService
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Result.Failure(UserErrors.NotFound);
 
@@ -79,7 +65,7 @@ public class UserManagementService : IUserManagementService
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Result.Failure(UserErrors.NotFound);
 
@@ -87,19 +73,19 @@ public class UserManagementService : IUserManagementService
             return Result.Success("الحساب معطل بالفعل");
 
         user.IsActive = false;
-        var result = await _userManager.UpdateAsync(user);
+        var result = await userManager.UpdateAsync(user);
 
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            _logger.LogWarning("فشل تعطيل المستخدم {UserId}: {Errors}", userId, errors);
+            logger.LogWarning("فشل تعطيل المستخدم {UserId}: {Errors}", userId, errors);
             return Result.Failure(UserErrors.UpdateFailed(errors));
         }
 
         // إلغاء كل الجلسات الشغالة فورًا (كل الأجهزة)
-        await _refreshTokenService.RevokeAllUserTokensAsync(userId, cancellationToken);
+        await refreshTokenService.RevokeAllUserTokensAsync(userId, cancellationToken);
 
-        _logger.LogInformation("تم تعطيل المستخدم {UserId} وإلغاء كل جلساته بنجاح", userId);
+        logger.LogInformation("تم تعطيل المستخدم {UserId} وإلغاء كل جلساته بنجاح", userId);
         return Result.Success("تم تعطيل الحساب وإنهاء كل الجلسات بنجاح");
     }
 
@@ -110,7 +96,7 @@ public class UserManagementService : IUserManagementService
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Result.Failure(UserErrors.NotFound);
 
@@ -118,16 +104,16 @@ public class UserManagementService : IUserManagementService
             return Result.Success("الحساب مفعل بالفعل");
 
         user.IsActive = true;
-        var result = await _userManager.UpdateAsync(user);
+        var result = await userManager.UpdateAsync(user);
 
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            _logger.LogWarning("فشل تفعيل المستخدم {UserId}: {Errors}", userId, errors);
+            logger.LogWarning("فشل تفعيل المستخدم {UserId}: {Errors}", userId, errors);
             return Result.Failure(UserErrors.UpdateFailed(errors));
         }
 
-        _logger.LogInformation("تم تفعيل المستخدم {UserId} بنجاح", userId);
+        logger.LogInformation("تم تفعيل المستخدم {UserId} بنجاح", userId);
         return Result.Success("تم تفعيل الحساب بنجاح");
     }
 
@@ -140,7 +126,7 @@ public class UserManagementService : IUserManagementService
         string phoneNumber,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Result.Failure(UserErrors.NotFound);
 
@@ -157,7 +143,7 @@ public class UserManagementService : IUserManagementService
         if (!string.IsNullOrWhiteSpace(phoneNumber))
         {
             // التحقق من أن رقم الهاتف غير مستخدم من قبل مستخدم آخر
-            var existingUser = await _userManager.Users
+            var existingUser = await userManager.Users
                 .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber && u.Id != userId, cancellationToken);
 
             if (existingUser is not null)
@@ -166,15 +152,15 @@ public class UserManagementService : IUserManagementService
             user.PhoneNumber = phoneNumber;
         }
 
-        var result = await _userManager.UpdateAsync(user);
+        var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            _logger.LogWarning("فشل تحديث الملف الشخصي للمستخدم {UserId}: {Errors}", userId, errors);
+            logger.LogWarning("فشل تحديث الملف الشخصي للمستخدم {UserId}: {Errors}", userId, errors);
             return Result.Failure(UserErrors.UpdateFailed(errors));
         }
 
-        _logger.LogInformation("تم تحديث الملف الشخصي للمستخدم {UserId} بنجاح", userId);
+        logger.LogInformation("تم تحديث الملف الشخصي للمستخدم {UserId} بنجاح", userId);
         return Result.Success("تم تحديث البيانات بنجاح");
     }
 
@@ -186,7 +172,7 @@ public class UserManagementService : IUserManagementService
         string avatarUrl,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Result.Failure(UserErrors.NotFound);
 
@@ -195,16 +181,16 @@ public class UserManagementService : IUserManagementService
             return Result.Failure(UserErrors.ValidationFailed("رابط الصورة غير صالح"));
 
         user.AvatarUrl = avatarUrl;
-        var result = await _userManager.UpdateAsync(user);
+        var result = await userManager.UpdateAsync(user);
 
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            _logger.LogWarning("فشل تحديث صورة المستخدم {UserId}: {Errors}", userId, errors);
+            logger.LogWarning("فشل تحديث صورة المستخدم {UserId}: {Errors}", userId, errors);
             return Result.Failure(UserErrors.UpdateFailed(errors));
         }
 
-        _logger.LogInformation("تم تحديث صورة المستخدم {UserId} بنجاح", userId);
+        logger.LogInformation("تم تحديث صورة المستخدم {UserId} بنجاح", userId);
         return Result.Success("تم تحديث الصورة بنجاح");
     }
 }

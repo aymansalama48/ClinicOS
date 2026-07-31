@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ClinicOS.Application.Common.Abstractions.Core;
+using ClinicOS.Application.Common.Events; // 👈 ضفنا الـ namespace بتاع الـ Wrapper
 using ClinicOS.Domain.Common.Events;
 using ClinicOS.Infrastructure.Persistence.Data;
 using Hangfire;
@@ -33,7 +34,7 @@ public class ProcessOutboxMessagesJob
     }
 
     // دالة المعالجة التي سينفذها Hangfire
-    [AutomaticRetry(Attempts = 0)] // نلغي إعادة المحاولة التلقائية لـ Hangfire هنا لأننا ندير الـ RetryCount بجدول الـ Outbox
+    [AutomaticRetry(Attempts = 0)]
     public async Task ProcessAsync()
     {
         // 1. سحب الرسائل المعلقة
@@ -68,8 +69,19 @@ public class ProcessOutboxMessagesJob
                     continue;
                 }
 
-                // 3. نشر الحدث داخل التطبيق عبر MediatR
-                await _publisher.Publish(domainEvent);
+                // 3. نشر الحدث داخل التطبيق عبر MediatR (💡 هنا التعديل الجوهري)
+
+                // أ. إنشاء النوع المغلف ديناميكياً: DomainEventNotification<TEvent>
+                var wrapperType = typeof(DomainEventNotification<>).MakeGenericType(eventType);
+
+                // ب. إنشاء نسخة من المغلف وتمرير الحدث الأصلي بداخلها
+                var notification = Activator.CreateInstance(wrapperType, domainEvent);
+
+                // ج. إرسال المغلف (الذي يطبق INotification) إلى MediatR
+                if (notification is not null)
+                {
+                    await _publisher.Publish(notification);
+                }
 
                 // 4. تحديث حالة الرسالة
                 message.ProcessedOnUtc = _dateTime.Now;

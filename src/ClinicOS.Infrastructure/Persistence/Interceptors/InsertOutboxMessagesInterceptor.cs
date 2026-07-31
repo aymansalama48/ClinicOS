@@ -1,11 +1,14 @@
 ﻿using System.Text.Json;
+using ClinicOS.Application.Common.Abstractions.Core;
 using ClinicOS.Domain.Common.Events;
 using ClinicOS.Infrastructure.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace ClinicOS.Infrastructure.Persistence.Interceptors;
 
-public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
+public sealed class InsertOutboxMessagesInterceptor(
+    IDateTime dateTime)
+    : SaveChangesInterceptor
 {
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
@@ -13,7 +16,16 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
         CancellationToken cancellationToken = default)
     {
         var context = eventData.Context;
-        if (context is null) return base.SavingChangesAsync(eventData, result, cancellationToken);
+
+        if (context is null)
+        {
+            return base.SavingChangesAsync(
+                eventData,
+                result,
+                cancellationToken);
+        }
+
+        var occurredOnUtc = dateTime.Now;
 
         var outboxMessages = context.ChangeTracker
             .Entries<IHasDomainEvents>()
@@ -22,23 +34,30 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
             {
                 var events = entity.DomainEvents.ToList();
                 entity.ClearDomainEvents();
+
                 return events;
             })
             .Select(domainEvent => new OutboxMessage
             {
                 Id = Guid.NewGuid(),
-                OccurredOnUtc = DateTime.UtcNow,
-                Type = domainEvent.GetType().AssemblyQualifiedName ?? domainEvent.GetType().Name,
-                Content = JsonSerializer.Serialize(domainEvent, domainEvent.GetType()),
+                OccurredOnUtc = occurredOnUtc,
+                Type = domainEvent.GetType().AssemblyQualifiedName
+                    ?? domainEvent.GetType().Name,
+                Content = JsonSerializer.Serialize(
+                    domainEvent,
+                    domainEvent.GetType()),
                 RetryCount = 0
             })
             .ToList();
 
-        if (outboxMessages.Any())
+        if (outboxMessages.Count > 0)
         {
             context.Set<OutboxMessage>().AddRange(outboxMessages);
         }
 
-        return base.SavingChangesAsync(eventData, result, cancellationToken);
+        return base.SavingChangesAsync(
+            eventData,
+            result,
+            cancellationToken);
     }
 }

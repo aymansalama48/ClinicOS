@@ -1,7 +1,6 @@
 ﻿using ClinicOS.Domain.Common.Entities;
 using ClinicOS.Domain.Entities.Appointments;
 using ClinicOS.Domain.Enums;
-using System.Xml.Linq;
 
 namespace ClinicOS.Domain.Entities.Patients
 {

@@ -335,6 +335,69 @@ namespace ClinicOS.Infrastructure.Migrations
                     b.ToTable("DoctorAvailabilities", (string)null);
                 });
 
+            modelBuilder.Entity("ClinicOS.Domain.Entities.Invitation.StaffInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AdminName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("SpecializationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("StaffInvitations", (string)null);
+                });
+
             modelBuilder.Entity("ClinicOS.Domain.Entities.MedicalRecords.MedicalRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -428,6 +491,61 @@ namespace ClinicOS.Infrastructure.Migrations
                         .HasDatabaseName("IX_Tests_MedicalRecordId");
 
                     b.ToTable("Tests", (string)null);
+                });
+
+            modelBuilder.Entity("ClinicOS.Domain.Entities.OtpVerification.OtpVerification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AppointmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AttemptsCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("Expiry")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsConsumed")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("NextResendAllowedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("Expiry")
+                        .HasDatabaseName("IX_OtpVerifications_Expiry");
+
+                    b.HasIndex("Phone", "Purpose", "IsConsumed")
+                        .HasDatabaseName("IX_OtpVerifications_Phone_Purpose_IsConsumed");
+
+                    b.ToTable("OtpVerifications", (string)null);
                 });
 
             modelBuilder.Entity("ClinicOS.Domain.Entities.Patients.Patient", b =>
@@ -645,61 +763,6 @@ namespace ClinicOS.Infrastructure.Migrations
                     b.HasIndex("SpecializationId");
 
                     b.ToTable("Receptionists", (string)null);
-                });
-
-            modelBuilder.Entity("ClinicOS.Domain.Entities.Security.OtpVerification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("AppointmentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("AttemptsCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CodeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<DateTime>("Expiry")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsConsumed")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("MaxAttempts")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("NextResendAllowedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Purpose")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<DateTime?>("VerifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AppointmentId");
-
-                    b.HasIndex("Expiry")
-                        .HasDatabaseName("IX_OtpVerifications_Expiry");
-
-                    b.HasIndex("Phone", "Purpose", "IsConsumed")
-                        .HasDatabaseName("IX_OtpVerifications_Phone_Purpose_IsConsumed");
-
-                    b.ToTable("OtpVerifications", (string)null);
                 });
 
             modelBuilder.Entity("ClinicOS.Domain.Entities.Specializations.Specialization", b =>
@@ -1223,6 +1286,16 @@ namespace ClinicOS.Infrastructure.Migrations
                     b.Navigation("MedicalRecord");
                 });
 
+            modelBuilder.Entity("ClinicOS.Domain.Entities.OtpVerification.OtpVerification", b =>
+                {
+                    b.HasOne("ClinicOS.Domain.Entities.Appointments.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Appointment");
+                });
+
             modelBuilder.Entity("ClinicOS.Domain.Entities.Patients.Patient", b =>
                 {
                     b.HasOne("ClinicOS.Infrastructure.Persistence.IdentityModels.ApplicationUser", null)
@@ -1268,16 +1341,6 @@ namespace ClinicOS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Specialization");
-                });
-
-            modelBuilder.Entity("ClinicOS.Domain.Entities.Security.OtpVerification", b =>
-                {
-                    b.HasOne("ClinicOS.Domain.Entities.Appointments.Appointment", "Appointment")
-                        .WithMany()
-                        .HasForeignKey("AppointmentId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Appointment");
                 });
 
             modelBuilder.Entity("ClinicOS.Domain.Entities.Specializations.SpecializationSchedule", b =>

@@ -6,17 +6,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicOS.Infrastructure.Identity.Authorization;
 
-public class PermissionService : IPermissionService
+/// <summary>
+/// تنفيذ خدمة الصلاحيات (Role-based) — بيجيب صلاحيات اليوزر من الأدوار المرتبطة بيه
+/// </summary>
+public class PermissionService(
+    UserManager<ApplicationUser> userManager,
+    AppDbContext context) : IPermissionService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly AppDbContext _context;
-
-    public PermissionService(UserManager<ApplicationUser> userManager, AppDbContext context)
-    {
-        _userManager = userManager;
-        _context = context;
-    }
-
+    /// <summary>
+    /// التحقق من إن اليوزر معاه صلاحية معينة
+    /// </summary>
     public async Task<bool> HasPermissionAsync(
         Guid userId,
         string permissionName,
@@ -26,19 +25,22 @@ public class PermissionService : IPermissionService
         return permissions.Contains(permissionName);
     }
 
+    /// <summary>
+    /// جلب كل صلاحيات اليوزر (مجمعة من كل أدواره)
+    /// </summary>
     public async Task<IList<string>> GetUserPermissionsAsync(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return new List<string>();
 
-        var roleNames = await _userManager.GetRolesAsync(user);
+        var roleNames = await userManager.GetRolesAsync(user);
         if (roleNames.Count == 0)
             return new List<string>();
 
-        var permissions = await _context.Roles   // 👈 دلوقتي بترجع ApplicationRole صح بعد تصحيح AppDbContext
+        var permissions = await context.Roles   // 👈 دلوقتي بترجع ApplicationRole صح بعد تصحيح AppDbContext
             .Where(r => roleNames.Contains(r.Name!))
             .SelectMany(r => r.RolePermissions)
             .Select(rp => rp.Permission!.Name)
