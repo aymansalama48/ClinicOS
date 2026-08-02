@@ -4,6 +4,9 @@ using ClinicOS.Api.Controllers.Base;
 using ClinicOS.Application.Features.Accounts.AccountManagement.Commands.ChangePassword;
 using ClinicOS.Application.Features.Accounts.AccountManagement.Commands.ForgotPassword;
 using ClinicOS.Application.Features.Accounts.AccountManagement.Commands.ResetPassword;
+using ClinicOS.Application.Features.Accounts.AccountManagement.Commands.UpdateMyProfile;
+using ClinicOS.Application.Features.Accounts.AccountManagement.Commands.UpdateMyProfilePicture;
+using ClinicOS.Application.Features.Accounts.AccountManagement.Queries.GetMyProfile;
 using ClinicOS.Application.Features.Accounts.Authentication.Commands.Logout;
 using ClinicOS.Application.Features.Accounts.Authentication.Commands.RefreshToken;
 using ClinicOS.Application.Features.Accounts.StaffAuth.Commands.StaffGoogleLogin;
@@ -100,6 +103,34 @@ public class AccountsController : BaseApiController
     [Authorize]
     public async Task<IResult> ChangePassword(
         [FromBody] ChangePasswordCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    [HttpGet("me/profile")]
+    [Authorize] // متاح لأي مستخدم مسجل الدخول
+    public async Task<IResult> GetMyAccountProfile(CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetMyAccountProfileQuery(), cancellationToken);
+        return HandleResult(result);
+    }
+
+    [HttpPut("me/profile")]
+    [Authorize]
+    public async Task<IResult> UpdateMyAccountProfile(
+        [FromBody] UpdateMyAccountProfileCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    [HttpPut("me/profile/picture")]
+    [Authorize]
+    public async Task<IResult> UpdateMyProfilePicture(
+        [FromBody] UpdateMyProfilePictureCommand command,
         CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(command, cancellationToken);

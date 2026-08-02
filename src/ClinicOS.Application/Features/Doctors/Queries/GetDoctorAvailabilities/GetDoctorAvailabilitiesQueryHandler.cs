@@ -1,8 +1,8 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Messaging;
 using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Errors.Doctors; // استدعاء الأخطاء المنظمة
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Domain.Common.Results;
-using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,30 +23,48 @@ public sealed class GetDoctorAvailabilitiesQueryHandler
         GetDoctorAvailabilitiesQuery request,
         CancellationToken cancellationToken)
     {
-        // 1. تجهيز الاستعلام الأساسي (قراءة فقط بدون تتبع)
+        // 1. التأكد من وجود الطبيب أولاً (باستخدام الـ Errors المنظمة)
+        var doctorQuery = _context.Doctors.Where(d => d.Id == request.DoctorId);
+        var doctorExists = await _context.AnyAsync(doctorQuery, cancellationToken);
+
+        if (!doctorExists)
+        {
+            return Result<PagedResult<DoctorAvailabilityResponse>>.Failure(DoctorErrors.NotFound);
+        }
+
+        // 2. الاستعلام عن المواعيد
         var query = _context.DoctorAvailabilities
-            .AsNoTracking()
             .Where(da => da.DoctorId == request.DoctorId);
+        // 👇 تطبيق فلتر اليوم لو الفرونت إند بعته
+        if (request.DayOfWeek.HasValue)
+        {
+            query = query.Where(da => da.DayOfWeek == request.DayOfWeek.Value);
+        }
+        // 3. تفعيل AsNoTracking من الأداپتر (عشان الأداء)
+        var noTrackingQuery = _context.AsNoTracking(query);
 
-        // 2. حساب إجمالي عدد العناصر (مهم جداً للـ Pagination Metadata)
-        var totalCount = await query.CountAsync(cancellationToken);
+        // 4. حساب العدد الكلي (للـ Metadata بتاعت الباجنيشن)
+        var totalCount = await _context.CountAsync(noTrackingQuery, cancellationToken);
 
-        // 3. جلب البيانات المطلوبة للصفحة الحالية
-        var items = await query
-            .OrderBy(da => da.DayOfWeek) // ترتيب بالأيام
-            .ThenBy(da => da.Period)     // ثم بالفترات
-            .Skip(request.Parameters.Skip) // 👈 تخطي العناصر القديمة[cite: 10]
-            .Take(request.Parameters.PageSize) // 👈 جلب حجم الصفحة المطلوب[cite: 10]
+        // 5. تطبيق الترتيب وتحديد الصفحة (Skip & Take)
+        var paginatedQuery = noTrackingQuery
+            .OrderBy(da => da.DayOfWeek)
+            .ThenBy(da => da.Period)
+            .Skip(request.Parameters.Skip)
+            .Take(request.Parameters.PageSize)
             .Select(da => new DoctorAvailabilityResponse(
                 da.Id,
                 da.DayOfWeek,
                 da.Period,
                 da.StartTime,
                 da.EndTime,
-                da.MaxPatients))
-            .ToListAsync(cancellationToken);
+                da.MaxPatients
+            ));
 
-        // 4. بناء معلومات الصفحة (Metadata)[cite: 9]
+        // 6. تنفيذ الاستعلام وجلب البيانات
+        var items = await _context.ToListAsync(paginatedQuery, cancellationToken);
+
+        // 7. بناء معلومات الباجنيشن (Metadata)
         var metadata = new PaginationMetadata
         {
             CurrentPage = request.Parameters.PageNumber,
@@ -54,14 +72,11 @@ public sealed class GetDoctorAvailabilitiesQueryHandler
             TotalCount = totalCount
         };
 
-        // 5. تجميع النتيجة النهائية[cite: 8]
-        var pagedResult = new PagedResult<DoctorAvailabilityResponse>
+        // 8. إرجاع النتيجة متغلفة في PagedResult
+        return Result<PagedResult<DoctorAvailabilityResponse>>.Success(new PagedResult<DoctorAvailabilityResponse>
         {
             Items = items,
             Pagination = metadata
-        };
-
-        // 6. إرجاع النتيجة بنجاح
-        return Result<PagedResult<DoctorAvailabilityResponse>>.Success(pagedResult);
+        });
     }
 }

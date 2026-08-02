@@ -3,7 +3,7 @@
 namespace ClinicOS.Application.Common.Errors.Users;
 
 /// <summary>
-/// أخطاء عامة متعلقة بحسابات المستخدمين (تخص جميع أنواع المستخدمين: Staff، Patient، Admin)
+/// أخطاء عامة متعلقة بحسابات المستخدمين (تخص جميع أنواع المستخدمين: Staff، Patient، Admin).
 /// </summary>
 public static class UserErrors
 {
@@ -59,7 +59,6 @@ public static class UserErrors
         $"رمز إعادة تعيين كلمة المرور غير صالح: {details}",
         ErrorType.Validation);
 
-    // ✅ تمت الإضافة: خطأ فشل التحقق من صحة البيانات
     public static Error ValidationFailed(string details) => new(
         "USER_VALIDATION_FAILED",
         $"فشل التحقق من البيانات: {details}",

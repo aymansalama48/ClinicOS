@@ -1,8 +1,10 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Messaging;
 using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Errors.Doctors; // 👈 استدعاء كلاس الأخطاء
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Domain.Entities.Doctors;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,35 +24,31 @@ public sealed class SetDoctorAvailabilityCommandHandler
         SetDoctorAvailabilityCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. التحقق من وجود الطبيب أولاً
-        var doctorExists = await _context.Doctors
-            .AnyAsync(d => d.Id == request.DoctorId, cancellationToken);
+        // 1. التحقق من وجود الطبيب
+        var doctorQuery = _context.Doctors.Where(d => d.Id == request.DoctorId);
+        var doctorExists = await _context.AnyAsync(doctorQuery, cancellationToken);
 
         if (!doctorExists)
         {
-            return Result<Guid>.Failure(new Error(
-                "Doctor.NotFound",
-                "الطبيب المحدد غير موجود في النظام.",
-                ErrorType.NotFound));
+            // 👇 استخدام الـ Error المنظم
+            return Result<Guid>.Failure(DoctorErrors.NotFound);
         }
 
-        // 2. التحقق من عدم تكرار نفس الفترة في نفس اليوم للطبيب
-        var isOverlapping = await _context.DoctorAvailabilities
-            .AnyAsync(da =>
-                da.DoctorId == request.DoctorId &&
-                da.DayOfWeek == request.DayOfWeek &&
-                da.Period == request.Period,
-                cancellationToken);
+        // 2. التحقق من عدم تكرار نفس الفترة
+        var overlappingQuery = _context.DoctorAvailabilities.Where(da =>
+            da.DoctorId == request.DoctorId &&
+            da.DayOfWeek == request.DayOfWeek &&
+            da.Period == request.Period);
+
+        var isOverlapping = await _context.AnyAsync(overlappingQuery, cancellationToken);
 
         if (isOverlapping)
         {
-            return Result<Guid>.Failure(new Error(
-                "DoctorAvailability.Conflict",
-                "يوجد موعد مسجل مسبقاً لهذا الطبيب في نفس اليوم والفترة المحددة.",
-                ErrorType.Conflict));
+            // 👇 استخدام الـ Error المنظم
+            return Result<Guid>.Failure(DoctorErrors.AvailabilityConflict);
         }
 
-        // 3. إنشاء الموعد باستخدام الـ Factory Method اللي عملناها في الـ Domain
+        // 3. إنشاء الموعد
         var availability = DoctorAvailability.Create(
             request.DoctorId,
             request.DayOfWeek,
@@ -59,11 +57,10 @@ public sealed class SetDoctorAvailabilityCommandHandler
             request.EndTime,
             request.MaxPatients);
 
-        // 4. الحفظ المباشر (باستخدام دوال الـ Adapter النظيفة)
+        // 4. الحفظ
         _context.Add(availability);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 5. إرجاع النتيجة بنجاح مع الـ ID الجديد
         return Result<Guid>.Success(availability.Id);
     }
 }

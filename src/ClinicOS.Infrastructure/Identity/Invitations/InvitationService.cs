@@ -15,9 +15,7 @@ using ClinicOS.Application.Common.Errors.Invitations;
 using ClinicOS.Application.Common.Errors.Users;
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Domain.Constants;
-using ClinicOS.Domain.Entities.Doctors;
 using ClinicOS.Domain.Entities.Invitation;
-using ClinicOS.Domain.Entities.Receptionists;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 
 using Microsoft.AspNetCore.Identity;
@@ -55,7 +53,7 @@ public sealed class InvitationService(
             pending.ExpiresAtUtc = now;
         }
 
-        // 3. إنشاء التوكن والكيان عبر الـ Factory Method (تسجل حدث الإيميل داخلها تلقائياً)
+        // 3. إنشاء التوكن والكيان عبر الـ Factory Method
         var token = GenerateSecureToken();
         var invitation = StaffInvitation.Create(
             email: email,
@@ -146,7 +144,7 @@ public sealed class InvitationService(
         var lastName = nameParts.Length > 1 ? nameParts[^1] : string.Empty;
         var middleName = nameParts.Length > 2 ? string.Join(" ", nameParts[1..^1]) : null;
 
-        // 2. إنشاء المستخدم بالتمرير للخصائص الصحيحة
+        // 2. إنشاء المستخدم الأساسي
         var user = new ApplicationUser
         {
             Id = Guid.CreateVersion7(),
@@ -166,7 +164,7 @@ public sealed class InvitationService(
             return Result<bool>.Failure(UserErrors.CreationFailed(details));
         }
 
-        // إضافة الدور
+        // 3. إضافة الدور للمستخدم
         var roleResult = await userManager.AddToRoleAsync(user, invitation.Role);
         if (!roleResult.Succeeded)
         {
@@ -174,39 +172,7 @@ public sealed class InvitationService(
             return Result<bool>.Failure(UserErrors.CreationFailed("فشل تعيين الدور الوظيفي للمستخدم."));
         }
 
-        // إنشاء البروفايل الخاص بالدور
-        switch (invitation.Role)
-        {
-            case Roles.Doctor:
-                var doctor = new Doctor
-                {
-                    Id = Guid.CreateVersion7(),
-                    ApplicationUserId = user.Id,
-                    SpecializationId = invitation.SpecializationId
-                        ?? throw new InvalidOperationException("التخصص مطلوب لإنشاء حساب طبيب.")
-                };
-                context.Add(doctor);
-                break;
-
-            case Roles.Receptionist:
-                var receptionist = new Receptionist
-                {
-                    Id = Guid.CreateVersion7(),
-                    ApplicationUserId = user.Id,
-                    SpecializationId = invitation.SpecializationId
-                        ?? throw new InvalidOperationException("التخصص مطلوب لإنشاء حساب وظيفي.")
-                };
-                context.Add(receptionist);
-                break;
-
-            case Roles.Admin:
-                break;
-
-            default:
-                logger.LogWarning("دور غير معروف: {Role}", invitation.Role);
-                break;
-        }
-
+        // إغلاق الدعوة
         invitation.IsUsed = true;
         invitation.UsedAtUtc = dateTime.Now;
 
@@ -222,7 +188,6 @@ public sealed class InvitationService(
         string googleIdToken,
         CancellationToken cancellationToken = default)
     {
-        // 1. التحقق من التوكن الخاص بالدعوة
         var invitation = await context.StaffInvitations
             .FirstOrDefaultAsync(i => i.Token == invitationToken, cancellationToken);
 
@@ -232,7 +197,6 @@ public sealed class InvitationService(
         if (invitation.IsUsed || invitation.ExpiresAtUtc <= dateTime.Now)
             return Result<bool>.Failure(InvitationErrors.InvalidOrExpired);
 
-        // 2. التحقق من صحة توكن جوجل باستخدام الـ Provider
         var googleProvider = externalAuthProviders.FirstOrDefault(p => p.ProviderName == "Google");
         if (googleProvider is null)
             return Result<bool>.Failure(UserErrors.ValidationFailed("مزود خدمة جوجل غير مفعل."));
@@ -243,19 +207,16 @@ public sealed class InvitationService(
 
         var googleUser = googleTokenResult.Data!;
 
-        // 3. 🚨 التأكد أن إيميل جوجل يطابق إيميل الدعوة
         if (!string.Equals(googleUser.Email, invitation.Email, StringComparison.OrdinalIgnoreCase))
         {
             return Result<bool>.Failure(UserErrors.ValidationFailed("البريد الإلكتروني لحساب جوجل لا يطابق البريد الإلكتروني الموجهة له الدعوة."));
         }
 
-        // 4. تقسيم الاسم القادم من جوجل إلى أجزائه
         var nameParts = googleUser.FullName?.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? [];
         var firstName = nameParts.Length > 0 ? nameParts[0] : googleUser.Email;
         var lastName = nameParts.Length > 1 ? nameParts[^1] : string.Empty;
         var middleName = nameParts.Length > 2 ? string.Join(" ", nameParts[1..^1]) : null;
 
-        // 5. إنشاء حساب ApplicationUser (بدون كلمة مرور وربط صورة البروفايل)
         var user = new ApplicationUser
         {
             Id = Guid.CreateVersion7(),
@@ -264,11 +225,10 @@ public sealed class InvitationService(
             FirstName = firstName,
             MiddleName = middleName,
             LastName = lastName,
-            AvatarUrl = googleUser.AvatarUrl, // 👈 سحبنا الصورة من جوجل
+            AvatarUrl = googleUser.AvatarUrl,
             EmailConfirmed = true
         };
 
-        // CreateAsync بدون تمرير Password
         var createResult = await userManager.CreateAsync(user);
         if (!createResult.Succeeded)
         {
@@ -276,54 +236,22 @@ public sealed class InvitationService(
             return Result<bool>.Failure(UserErrors.CreationFailed(details));
         }
 
-        // 6. ربط الحساب بتسجيل دخول جوجل (External Login) باستخدام ProviderUserId
         var loginInfo = new UserLoginInfo("Google", googleUser.ProviderUserId, "Google");
         var addLoginResult = await userManager.AddLoginAsync(user, loginInfo);
 
         if (!addLoginResult.Succeeded)
         {
-            await userManager.DeleteAsync(user); // Rollback
+            await userManager.DeleteAsync(user);
             return Result<bool>.Failure(UserErrors.CreationFailed("فشل ربط الحساب بجوجل."));
         }
 
-        // 7. إضافة الدور (Role)
         var roleResult = await userManager.AddToRoleAsync(user, invitation.Role);
         if (!roleResult.Succeeded)
         {
-            await userManager.DeleteAsync(user); // Rollback
+            await userManager.DeleteAsync(user);
             return Result<bool>.Failure(UserErrors.CreationFailed("فشل تعيين الدور الوظيفي للمستخدم."));
         }
 
-        // 8. إنشاء البروفايل الخاص بالدور (Doctor / Receptionist)
-        switch (invitation.Role)
-        {
-            case Roles.Doctor:
-                var doctor = new Doctor
-                {
-                    Id = Guid.CreateVersion7(),
-                    ApplicationUserId = user.Id,
-                    SpecializationId = invitation.SpecializationId
-                        ?? throw new InvalidOperationException("التخصص مطلوب لإنشاء حساب طبيب.")
-                };
-                context.Add(doctor);
-                break;
-
-            case Roles.Receptionist:
-                var receptionist = new Receptionist
-                {
-                    Id = Guid.CreateVersion7(),
-                    ApplicationUserId = user.Id,
-                    SpecializationId = invitation.SpecializationId
-                        ?? throw new InvalidOperationException("التخصص مطلوب لإنشاء حساب وظيفي.")
-                };
-                context.Add(receptionist);
-                break;
-
-            case Roles.Admin:
-                break;
-        }
-
-        // 9. إغلاق الدعوة
         invitation.IsUsed = true;
         invitation.UsedAtUtc = dateTime.Now;
 

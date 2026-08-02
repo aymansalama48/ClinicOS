@@ -1,10 +1,14 @@
-﻿using ClinicOS.Application.Common.Abstractions.Messaging;
+﻿using ClinicOS.Application.Common.Abstractions.External.Cache;
+using ClinicOS.Application.Common.Abstractions.Identity.Authorization;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Domain.Constants;
 using ClinicOS.Domain.Enums;
 using System;
+using System.Collections.Generic;
 
 namespace ClinicOS.Application.Features.Doctors.Commands.SetDoctorAvailability;
 
-// استخدمنا Record لأنه الأفضل للـ Commands (Immutable)
+[Permission(Permissions.Doctors.ManageAvailability)]
 public sealed record SetDoctorAvailabilityCommand(
     Guid DoctorId,
     DayOfWeek DayOfWeek,
@@ -12,4 +16,9 @@ public sealed record SetDoctorAvailabilityCommand(
     TimeOnly StartTime,
     TimeOnly EndTime,
     int? MaxPatients
-) : ICommand<Guid>; // بيرجع الـ ID بتاع الموعد اللي اتكريت
+) : ICommand<Guid>, ICacheInvalidatorCommand // 👈 الوراثة مزدوجة عشان يقبله الـ Handler ويدعم إبطال الكاش
+{
+    public IReadOnlyCollection<string> CacheKeys => [
+        $"doctor-availability-{DoctorId}"
+    ];
+}

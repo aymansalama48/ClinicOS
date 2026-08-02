@@ -2,6 +2,7 @@
 using ClinicOS.Application.Common.Abstractions.Identity.Tokens;
 using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Errors.Users;
+using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using Microsoft.AspNetCore.Identity;
@@ -41,6 +42,25 @@ public class UserManagementService(
             Roles = roles.ToList(),
             IsActive = user.IsActive
         });
+    }
+    public async Task<List<UserDto>> GetUsersByIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken)
+    {
+        // هنا إحنا في الـ Infrastructure، فعادي جداً نستخدم ApplicationUser
+        return await userManager.Users // أو _context.Users
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new UserDto
+            {
+                Id = u.Id,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                FullName = string.IsNullOrWhiteSpace(u.MiddleName)
+                           ? (u.FirstName + " " + u.LastName).Trim()
+                           : (u.FirstName + " " + u.MiddleName + " " + u.LastName).Trim(),
+                AvatarUrl = u.AvatarUrl,
+                Email = u.Email,
+                IsActive = u.IsActive
+            })
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>
@@ -192,5 +212,10 @@ public class UserManagementService(
 
         logger.LogInformation("تم تحديث صورة المستخدم {UserId} بنجاح", userId);
         return Result.Success("تم تحديث الصورة بنجاح");
+    }
+
+    public Task<PagedResult<UserDto>> GetAllUsersAsync(int pageNumber, int pageSize, string? role, string? searchTerm, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 }

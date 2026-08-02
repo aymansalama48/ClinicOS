@@ -3,6 +3,7 @@
 using ClinicOS.Application.Common.Abstractions.Persistence;
 using ClinicOS.Domain.Entities;
 using ClinicOS.Domain.Entities.Appointments;
+using ClinicOS.Domain.Entities.AuditLogs;
 using ClinicOS.Domain.Entities.Doctors;
 using ClinicOS.Domain.Entities.Invitation;
 using ClinicOS.Domain.Entities.MedicalRecords;
@@ -11,6 +12,7 @@ using ClinicOS.Domain.Entities.Patients;
 using ClinicOS.Domain.Entities.Prescriptions;
 using ClinicOS.Domain.Entities.Receptionists;
 using ClinicOS.Domain.Entities.Specializations;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -74,6 +76,31 @@ public class ApplicationDbContextAdapter(AppDbContext context) : IApplicationDbC
     public void RemoveRange<TEntity>(IEnumerable<TEntity> entities) where TEntity : class
     {
         context.Set<TEntity>().RemoveRange(entities);
+    }
+
+    // هتضيف دول جوه الكلاس (وطبعاً لازم يكون فيه using Microsoft.EntityFrameworkCore;)
+    public Task<bool> AnyAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default)
+    {
+        return query.AnyAsync(cancellationToken);
+    }
+
+    public Task<int> CountAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default)
+    {
+        return query.CountAsync(cancellationToken);
+    }
+
+    public Task<List<T>> ToListAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default)
+    {
+        return query.ToListAsync(cancellationToken);
+    }
+
+    public Task<T?> FirstOrDefaultAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default)
+    {
+        return query.FirstOrDefaultAsync(cancellationToken);
+    }
+    public IQueryable<T> AsNoTracking<T>(IQueryable<T> query) where T : class
+    {
+        return query.AsNoTracking();
     }
     // ==============================
     // 3. حفظ التغييرات

@@ -10,9 +10,7 @@ public sealed class CacheInvalidationBehavior<TRequest, TResponse>
     where TRequest : ICacheInvalidatorCommand
 {
     private readonly ICacheService _cacheService;
-
-    private readonly ILogger<
-        CacheInvalidationBehavior<TRequest, TResponse>> _logger;
+    private readonly ILogger<CacheInvalidationBehavior<TRequest, TResponse>> _logger;
 
     public CacheInvalidationBehavior(
         ICacheService cacheService,
@@ -27,15 +25,11 @@ public sealed class CacheInvalidationBehavior<TRequest, TResponse>
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        // Execute the command first.
         var response = await next();
 
-        // Never invalidate cache when the command failed.
         if (response is Result { IsSuccess: false })
         {
-            _logger.LogDebug(
-                "Command failed. Cache invalidation skipped.");
-
+            _logger.LogDebug("Command failed. Cache invalidation skipped.");
             return response;
         }
 
@@ -48,13 +42,10 @@ public sealed class CacheInvalidationBehavior<TRequest, TResponse>
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            await _cacheService.RemoveAsync(
-                cacheKey,
-                cancellationToken);
+            // 👇 التعديل السحري هنا: استخدام المسح بالبادئة
+            await _cacheService.RemoveByPrefixAsync(cacheKey, cancellationToken);
 
-            _logger.LogDebug(
-                "Invalidated cache key {CacheKey}",
-                cacheKey);
+            _logger.LogDebug("Invalidated cache keys starting with {CacheKey}", cacheKey);
         }
 
         return response;

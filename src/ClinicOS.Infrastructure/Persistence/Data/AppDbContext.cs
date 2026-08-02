@@ -2,6 +2,7 @@
 
 using ClinicOS.Domain.Entities;
 using ClinicOS.Domain.Entities.Appointments;
+using ClinicOS.Domain.Entities.AuditLogs;
 using ClinicOS.Domain.Entities.Doctors;
 using ClinicOS.Domain.Entities.Invitation;
 using ClinicOS.Domain.Entities.MedicalRecords;

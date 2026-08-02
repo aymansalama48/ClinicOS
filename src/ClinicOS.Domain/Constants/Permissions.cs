@@ -1,145 +1,138 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+
 namespace ClinicOS.Domain.Constants;
 
 /// <summary>
-/// الثوابت الخاصة بالصلاحيات (Permissions) في النظام
-/// مصممة حسب الوحدات الوظيفية (Modules) لتسهيل الإدارة والبحث
+/// الثوابت الخاصة بالصلاحيات (Permissions) في النظام.
+/// مقسمة بشكل هرمي (Hierarchical) لسهولة الاستخدام وقابلية التوسع.
 /// </summary>
 public static class Permissions
 {
-    // ====================================================
-    // 1. وحدة لوحة التحكم (Dashboard)
-    // ====================================================
-    public const string DashboardAccess = "Dashboard.Access";
-
-    // ====================================================
-    // 2. وحدة المواعيد (Appointments)
-    // ====================================================
-    public const string AppointmentsView = "Appointments.View";
-    public const string AppointmentsCreate = "Appointments.Create";
-    public const string AppointmentsUpdate = "Appointments.Update";
-    public const string AppointmentsCancel = "Appointments.Cancel";
-    public const string AppointmentsConfirm = "Appointments.Confirm";   // تأكيد OTP
-    public const string AppointmentsCheckIn = "Appointments.CheckIn";   // دخول الطابور
-
-    // ====================================================
-    // 3. وحدة الطابور (Queue)
-    // ====================================================
-    public const string QueueView = "Queue.View";
-    public const string QueueManage = "Queue.Manage";   // استدعاء المريض التالي، إعادة ترتيب
-
-    // ====================================================
-    // 4. وحدة السجلات الطبية (Medical Records)
-    // ====================================================
-    public const string MedicalRecordsView = "MedicalRecords.View";
-    public const string MedicalRecordsCreate = "MedicalRecords.Create";
-    public const string MedicalRecordsUpdate = "MedicalRecords.Update";
-    public const string MedicalRecordsComplete = "MedicalRecords.Complete"; // إنهاء الكشف
-
-    // ====================================================
-    // 5. وحدة الروشتات والتحاليل (Prescriptions & Tests)
-    // ====================================================
-    public const string PrescriptionsCreate = "Prescriptions.Create";
-    public const string PrescriptionsView = "Prescriptions.View";
-    public const string TestsOrder = "Tests.Order";
-    public const string TestsUploadResult = "Tests.UploadResult";
-    public const string TestsView = "Tests.View";
-
-    // ====================================================
-    // 6. وحدة المدفوعات (Payments)
-    // ====================================================
-    public const string PaymentsView = "Payments.View";
-    public const string PaymentsCreate = "Payments.Create";
-    public const string PaymentsRefund = "Payments.Refund";
-
-    // ====================================================
-    // 7. وحدة إدارة المستخدمين (User Management)
-    // ====================================================
-    public const string UsersView = "Users.View";
-    public const string UsersCreate = "Users.Create";
-    public const string UsersUpdate = "Users.Update";
-    public const string UsersDeactivate = "Users.Deactivate";
-    public const string UsersActivate = "Users.Activate";
-    public const string UsersAssignRoles = "Users.AssignRoles";
-
-    // ====================================================
-    // 8. وحدة الإعدادات والتكوين (Settings & Configuration)
-    // ====================================================
-    public const string SettingsView = "Settings.View";
-    public const string SettingsManage = "Settings.Manage";
-    public const string SpecializationsManage = "Specializations.Manage";
-
-    // ====================================================
-    // 9. وحدة التقارير (Reports)
-    // ====================================================
-    public const string ReportsView = "Reports.View";
-    public const string ReportsExport = "Reports.Export";
-
-    // ====================================================
-    // 10. وحدة المرضى (Patients) - للموظفين فقط
-    // ====================================================
-    public const string PatientsView = "Patients.View";
-    public const string PatientsCreate = "Patients.Create";
-    public const string PatientsUpdate = "Patients.Update";
-
-    // ====================================================
-    // 11. وحدة الأطباء والتخصصات (Doctors & Specializations) - للإدارة
-    // ====================================================
-    public const string DoctorsManage = "Doctors.Manage";
-    public const string DoctorsView = "Doctors.View";
-    public const string SpecializationsView = "Specializations.View";
-
-    // ====================================================
-    // قائمة بجميع الصلاحيات (للتكرار أو الـ Seed)
-    // ====================================================
-    public static readonly IReadOnlyList<string> All = new[]
+    public static class Dashboard
     {
-        DashboardAccess,
+        public const string Access = "Dashboard.Access";
+    }
 
-        AppointmentsView,
-        AppointmentsCreate,
-        AppointmentsUpdate,
-        AppointmentsCancel,
-        AppointmentsConfirm,
-        AppointmentsCheckIn,
+    public static class Specializations
+    {
+        public const string View = "Specializations.View";
+        public const string Create = "Specializations.Create";
+        public const string Update = "Specializations.Update";
+        public const string Delete = "Specializations.Delete";
+    }
 
-        QueueView,
-        QueueManage,
+    public static class Doctors
+    {
+        public const string View = "Doctors.View";
+        public const string Create = "Doctors.Create";
+        public const string Update = "Doctors.Update";
+        public const string Delete = "Doctors.Delete";
+        public const string ManageAvailability = "Doctors.ManageAvailability";
+    }
 
-        MedicalRecordsView,
-        MedicalRecordsCreate,
-        MedicalRecordsUpdate,
-        MedicalRecordsComplete,
+    public static class Receptionists
+    {
+        public const string View = "Receptionists.View";
+        public const string Create = "Receptionists.Create";
+        public const string Update = "Receptionists.Update";
+        public const string Delete = "Receptionists.Delete";
+    }
 
-        PrescriptionsCreate,
-        PrescriptionsView,
-        TestsOrder,
-        TestsUploadResult,
-        TestsView,
+    public static class Patients
+    {
+        public const string View = "Patients.View";
+        public const string Create = "Patients.Create";
+        public const string Update = "Patients.Update";
+        public const string Delete = "Patients.Delete";
+    }
 
-        PaymentsView,
-        PaymentsCreate,
-        PaymentsRefund,
+    public static class Appointments
+    {
+        public const string View = "Appointments.View";
+        public const string Create = "Appointments.Create";
+        public const string Update = "Appointments.Update";
+        public const string Cancel = "Appointments.Cancel";
+        public const string Confirm = "Appointments.Confirm";
+        public const string CheckIn = "Appointments.CheckIn";
+    }
 
-        UsersView,
-        UsersCreate,
-        UsersUpdate,
-        UsersDeactivate,
-        UsersActivate,
-        UsersAssignRoles,
+    public static class Queue
+    {
+        public const string View = "Queue.View";
+        public const string Manage = "Queue.Manage";
+    }
 
-        SettingsView,
-        SettingsManage,
-        SpecializationsManage,
+    public static class MedicalRecords
+    {
+        public const string View = "MedicalRecords.View";
+        public const string Create = "MedicalRecords.Create";
+        public const string Update = "MedicalRecords.Update";
+        public const string Complete = "MedicalRecords.Complete";
+    }
 
-        ReportsView,
-        ReportsExport,
+    public static class Prescriptions
+    {
+        public const string View = "Prescriptions.View";
+        public const string Create = "Prescriptions.Create";
+    }
 
-        PatientsView,
-        PatientsCreate,
-        PatientsUpdate,
+    public static class Tests
+    {
+        public const string View = "Tests.View";
+        public const string Order = "Tests.Order";
+        public const string UploadResult = "Tests.UploadResult";
+    }
 
-        DoctorsManage,
-        DoctorsView,
-        SpecializationsView
-    };
+    public static class Payments
+    {
+        public const string View = "Payments.View";
+        public const string Create = "Payments.Create";
+        public const string Refund = "Payments.Refund";
+    }
+
+    public static class Users
+    {
+        public const string View = "Users.View";
+        public const string Manage = "Users.Manage"; // شاملة الإيقاف والتفعيل
+        public const string AssignRoles = "Users.AssignRoles";
+    }
+
+    public static class Settings
+    {
+        public const string View = "Settings.View";
+        public const string Manage = "Settings.Manage";
+    }
+
+    public static class Reports
+    {
+        public const string View = "Reports.View";
+        public const string Export = "Reports.Export";
+    }
+
+    /// <summary>
+    /// دالة سحرية تستخدم الـ Reflection لجلب جميع الصلاحيات المعرفة في هذا الكلاس.
+    /// هذا يمنع خطأ نسيان إضافة صلاحية جديدة إلى قائمة الـ Seed.
+    /// </summary>
+    public static IReadOnlyList<string> GetAllPermissions()
+    {
+        var permissions = new List<string>();
+
+        // نجيب كل الكلاسات الداخلية (Nested Classes)
+        var nestedClasses = typeof(Permissions).GetNestedTypes(BindingFlags.Public | BindingFlags.Static);
+
+        foreach (var nestedClass in nestedClasses)
+        {
+            // نجيب كل الثوابت (Constants) جوه الكلاس ده
+            var constants = nestedClass.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                .Where(fi => fi.IsLiteral && !fi.IsInitOnly && fi.FieldType == typeof(string))
+                .Select(x => (string)x.GetRawConstantValue()!)
+                .ToList();
+
+            permissions.AddRange(constants);
+        }
+
+        return permissions.AsReadOnly();
+    }
 }

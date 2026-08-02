@@ -1,5 +1,6 @@
 ﻿using ClinicOS.Domain.Entities;
 using ClinicOS.Domain.Entities.Appointments;
+using ClinicOS.Domain.Entities.AuditLogs;
 using ClinicOS.Domain.Entities.Doctors;
 using ClinicOS.Domain.Entities.Invitation;
 using ClinicOS.Domain.Entities.MedicalRecords;
@@ -39,6 +40,8 @@ namespace ClinicOS.Application.Common.Abstractions.Persistence
         IQueryable<AuditLog> AuditLogs { get; }
         IQueryable<StaffInvitation> StaffInvitations { get; }
 
+
+
         // 2. عمليات الكتابة والإضافة والحذف (Generic Methods)
         void Add<TEntity>(TEntity entity) where TEntity : class;
         void Update<TEntity>(TEntity entity) where TEntity : class;
@@ -48,6 +51,14 @@ namespace ClinicOS.Application.Common.Abstractions.Persistence
         void AddRange<TEntity>(IEnumerable<TEntity> entities) where TEntity : class;
         void UpdateRange<TEntity>(IEnumerable<TEntity> entities) where TEntity : class;
         void RemoveRange<TEntity>(IEnumerable<TEntity> entities) where TEntity : class;
+        // ضيف السطور دي جوه الواجهة
+        Task<bool> AnyAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default);
+        Task<int> CountAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default);
+        Task<List<T>> ToListAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default);
+        Task<T?> FirstOrDefaultAsync<T>(IQueryable<T> query, CancellationToken cancellationToken = default);
+
+        IQueryable<T> AsNoTracking<T>(IQueryable<T> query) where T : class;
+
 
         // 3. حفظ التغييرات
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

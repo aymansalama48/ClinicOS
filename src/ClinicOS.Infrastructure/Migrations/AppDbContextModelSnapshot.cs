@@ -176,7 +176,7 @@ namespace ClinicOS.Infrastructure.Migrations
                     b.ToTable("Payments", (string)null);
                 });
 
-            modelBuilder.Entity("ClinicOS.Domain.Entities.AuditLog", b =>
+            modelBuilder.Entity("ClinicOS.Domain.Entities.AuditLogs.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -308,6 +308,12 @@ namespace ClinicOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("DayOfWeek")
                         .HasColumnType("int");
 
@@ -317,7 +323,7 @@ namespace ClinicOS.Infrastructure.Migrations
                     b.Property<TimeOnly>("EndTime")
                         .HasColumnType("time");
 
-                    b.Property<int>("MaxPatients")
+                    b.Property<int?>("MaxPatients")
                         .HasColumnType("int");
 
                     b.Property<int>("Period")
@@ -325,6 +331,12 @@ namespace ClinicOS.Infrastructure.Migrations
 
                     b.Property<TimeOnly>("StartTime")
                         .HasColumnType("time");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 

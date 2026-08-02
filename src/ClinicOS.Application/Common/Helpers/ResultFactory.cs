@@ -1,33 +1,39 @@
-﻿namespace ClinicOS.Application.Common.Helpers;
-
+﻿using ClinicOS.Domain.Common.Results;
 using System;
 using System.Linq;
 using System.Reflection;
-using ClinicOS.Domain.Common.Results;
+
+namespace ClinicOS.Application.Common.Helpers;
 
 public static class ResultFactory
 {
     public static TResponse CreateFailure<TResponse>(Error error)
     {
-        // 1. لو كان النوع Result العادي (بدون داتا)
+        // 1. لو الرد من نوع Result العادي (بدون Generic)
         if (typeof(TResponse) == typeof(Result))
         {
             return (TResponse)(object)Result.Failure(error);
         }
 
-        // 2. لو كان النوع Result<T> (يحتوي على داتا)
+        // 2. لو الرد من نوع Result<T> (زي PagedResult<DoctorResponse>)
         if (typeof(TResponse).IsGenericType && typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>))
         {
-            Type valueType = typeof(TResponse).GetGenericArguments()[0];
+            var valueType = typeof(TResponse).GetGenericArguments()[0];
 
-            var method = typeof(Result)
-                .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .First(m => m.Name == nameof(Result.Failure) && m.IsGenericMethod)
-                .MakeGenericMethod(valueType);
+            // استخدام الـ Reflection بشكل آمن للبحث عن دالة Failure
+            var failureMethod = typeof(Result<>)
+                .MakeGenericType(valueType)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static) // 👈 السر هنا
+                .FirstOrDefault(m => m.Name == nameof(Result.Failure) &&
+                                     m.GetParameters().Length == 1 &&
+                                     m.GetParameters()[0].ParameterType == typeof(Error));
 
-            return (TResponse)method.Invoke(null, [error])!;
+            if (failureMethod is not null)
+            {
+                return (TResponse)failureMethod.Invoke(null, new object[] { error })!;
+            }
         }
 
-        throw new InvalidOperationException("نوع الإرجاع غير مدعوم في الـ Pipeline.");
+        throw new InvalidOperationException($"Cannot create a failure result for type {typeof(TResponse).Name}. Make sure the Result<T> class has a static Failure(Error error) method.");
     }
 }

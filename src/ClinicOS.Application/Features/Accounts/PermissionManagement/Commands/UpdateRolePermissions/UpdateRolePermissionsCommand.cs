@@ -5,7 +5,7 @@ using ClinicOS.Application.Common.Abstractions.Identity.Authorization;
 using ClinicOS.Application.Common.Abstractions.Messaging;
 using ClinicOS.Domain.Constants;
 
-[Permission(Permissions.SettingsManage)]
+[Permission(Permissions.Settings.Manage)]
 public sealed record UpdateRolePermissionsCommand(
     Guid RoleId,
     List<Guid> PermissionIds) : ICommand, ICacheInvalidatorCommand

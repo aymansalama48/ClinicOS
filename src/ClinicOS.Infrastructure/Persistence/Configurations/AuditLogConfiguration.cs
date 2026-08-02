@@ -1,4 +1,5 @@
 ﻿using ClinicOS.Domain.Entities;
+using ClinicOS.Domain.Entities.AuditLogs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

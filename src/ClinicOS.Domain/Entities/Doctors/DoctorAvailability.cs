@@ -7,20 +7,17 @@ namespace ClinicOS.Domain.Entities.Doctors;
 /// <summary>
 /// توفر الطبيب في أيام وفترات محددة
 /// </summary>
-public sealed class DoctorAvailability : BaseEntity
+public sealed class DoctorAvailability : AuditableEntity // 👈 توحيد الوراثة لمتابعة الإنشاء والتعديل
 {
     public Guid DoctorId { get; private set; }
     public DayOfWeek DayOfWeek { get; private set; }
     public PeriodType Period { get; private set; }
     public TimeOnly StartTime { get; private set; }
     public TimeOnly EndTime { get; private set; }
-
-    // خليناها Nullable (int?) عشان تقبل فكرة "العدد المفتوح" لو الدكتور مش محدد رقم
     public int? MaxPatients { get; private set; }
 
     public Doctor Doctor { get; private set; } = null!;
 
-    // Constructor فارغ مطلوب لـ Entity Framework Core
     private DoctorAvailability() { }
 
     private DoctorAvailability(
@@ -31,7 +28,7 @@ public sealed class DoctorAvailability : BaseEntity
         TimeOnly endTime,
         int? maxPatients)
     {
-        Id = Guid.NewGuid(); // أو Guid.CreateVersion7() لو بتستخدمها في BaseEntity
+        Id = Guid.CreateVersion7();
         DoctorId = doctorId;
         DayOfWeek = dayOfWeek;
         Period = period;
@@ -40,7 +37,6 @@ public sealed class DoctorAvailability : BaseEntity
         MaxPatients = maxPatients;
     }
 
-    // Factory Method: الطريقة الوحيدة لإنشاء الموعد مع تطبيق قواعد البيزنس
     public static DoctorAvailability Create(
         Guid doctorId,
         DayOfWeek dayOfWeek,

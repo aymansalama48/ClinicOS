@@ -1,3 +1,4 @@
+using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Domain.Common.Results;
 
 namespace ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
@@ -11,6 +12,16 @@ public interface IUserManagementService
     Task<Result<UserDto>> GetByIdAsync(
         Guid userId,
         CancellationToken cancellationToken);
+    // داخل واجهة IUserManagementService
+    Task<List<UserDto>> GetUsersByIdsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken);
+    Task<PagedResult<UserDto>> GetAllUsersAsync(
+    int pageNumber,
+    int pageSize,
+    string? role,
+    string? searchTerm,
+    CancellationToken cancellationToken);
 
     Task<Result> EnsureUserExistsAsync(
         Guid userId,

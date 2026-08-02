@@ -1,9 +1,9 @@
-﻿namespace ClinicOS.Application.Common.Errors.Invitations;
+﻿using ClinicOS.Domain.Common.Results;
 
-using ClinicOS.Domain.Common.Results;
+namespace ClinicOS.Application.Common.Errors.Invitations;
 
 /// <summary>
-/// الأخطاء الخاصة بنظام دعوات الموظفين (Staff Invitations)
+/// الأخطاء الخاصة بنظام دعوات الموظفين (Staff Invitations).
 /// </summary>
 public static class InvitationErrors
 {

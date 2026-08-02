@@ -5,7 +5,7 @@ using ClinicOS.Application.Common.Abstractions.Identity.Authorization;
 using ClinicOS.Application.Common.Abstractions.Identity.Authorization.Models;
 using ClinicOS.Domain.Constants;
 
-[Permission(Permissions.SettingsManage)]
+[Permission(Permissions.Users.View)]
 public sealed record GetAllPermissionsQuery() : ICacheableQuery<List<PermissionDto>>
 {
     // مفتاح الكاش ثابت لأن هذه القائمة للجميع

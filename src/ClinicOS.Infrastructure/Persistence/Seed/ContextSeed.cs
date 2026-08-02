@@ -2,6 +2,10 @@
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ClinicOS.Infrastructure.Persistence.Seed;
 
@@ -31,7 +35,10 @@ public static class ContextSeed
 
         var newPermissions = new List<TbPermission>();
 
-        foreach (var permissionCode in Permissions.All)
+        // 👇 التعديل هنا: استخدام الدالة السحرية اللي عملناها
+        var allPermissionsList = Permissions.GetAllPermissions();
+
+        foreach (var permissionCode in allPermissionsList)
         {
             if (!existingPermissionNames.Contains(permissionCode))
             {
