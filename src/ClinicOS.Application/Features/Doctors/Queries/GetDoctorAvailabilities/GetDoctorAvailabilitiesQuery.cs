@@ -9,12 +9,13 @@ namespace ClinicOS.Application.Features.Doctors.Queries.GetDoctorAvailabilities;
 [Permission(Permissions.Doctors.View)]
 public sealed record GetDoctorAvailabilitiesQuery(
     Guid DoctorId,
-    DayOfWeek? DayOfWeek, // 👈 ضفنا الفلتر هنا
+    DayOfWeek? DayOfWeek,
     PaginationParameters Parameters
 ) : ICacheableQuery<PagedResult<DoctorAvailabilityResponse>>
 {
-    // الكاش Key بيتغير مع كل صفحة عشان الداتا متضربش في بعض
-    public string CacheKey => $"doctor-availability-{DoctorId}-page-{Parameters.PageNumber}-size-{Parameters.PageSize}";
+    // 👈 ضفنا اليوم (DayOfWeek) في المفتاح، ولو المريض مابحثش بيوم معين هنكتب "all"
+    public string CacheKey => $"doctor-availability-{DoctorId}-day-{DayOfWeek?.ToString() ?? "all"}-page-{Parameters.PageNumber}-size-{Parameters.PageSize}";
+
     public TimeSpan? SlidingExpiration => TimeSpan.FromMinutes(10);
     public TimeSpan? AbsoluteExpiration => TimeSpan.FromHours(1);
 }

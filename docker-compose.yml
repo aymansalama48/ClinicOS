@@ -1,0 +1,21 @@
+services:
+  clinicos.api:
+    image: ${DOCKER_REGISTRY-}clinicosapi
+    build:
+      context: .
+      dockerfile: src/ClinicOS.Api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=sql-server,1433;Database=ClinicOSDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
+      - ASPNETCORE_URLS=http://+:8080
+    depends_on:
+      - sql-server
+
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+    ports:
+      - "1433:1433"

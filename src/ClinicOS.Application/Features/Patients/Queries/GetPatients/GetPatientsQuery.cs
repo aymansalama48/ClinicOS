@@ -16,8 +16,7 @@ public sealed record GetPatientsQuery(
 ) : ICacheableQuery<PagedResult<PatientResponse>>
 {
     // الكاش Key بيتغير بناءً على كلمة البحث ورقم الصفحة
-    public string CacheKey => $"patients-list-search-{SearchTerm}-page-{Parameters.PageNumber}-size-{Parameters.PageSize}";
-
+    public string CacheKey => $"patients-list-search-{SearchTerm ?? "all"}-page-{Parameters.PageNumber}-size-{Parameters.PageSize}";
     public TimeSpan? SlidingExpiration => TimeSpan.FromMinutes(10);
     public TimeSpan? AbsoluteExpiration => TimeSpan.FromHours(1);
 }

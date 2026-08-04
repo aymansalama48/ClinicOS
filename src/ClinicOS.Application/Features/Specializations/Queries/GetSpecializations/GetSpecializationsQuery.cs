@@ -9,15 +9,16 @@ using System.Text.Json.Serialization;
 
 namespace ClinicOS.Application.Features.Specializations.Queries.GetSpecializations;
 
-[Permission(Permissions.Specializations.View)] // 👈 ضبط الصلاحية
+[Permission(Permissions.Specializations.View)] //[cite: 51]
 public sealed record GetSpecializationsQuery(
     string? SearchTerm,
     PaginationParameters Parameters
-) : ICacheableQuery<PagedResult<SpecializationResponse>>
+) : ICacheableQuery<PagedResult<SpecializationResponse>> //[cite: 51]
 {
-    public string CacheKey => $"specializations-list-search-{SearchTerm}-page-{Parameters.PageNumber}-size-{Parameters.PageSize}";
+    // 👇 معالجة الـ Null في كلمة البحث
+    public string CacheKey => $"specializations-list-search-{SearchTerm ?? "all"}-page-{Parameters.PageNumber}-size-{Parameters.PageSize}";
 
-    public TimeSpan? SlidingExpiration => TimeSpan.FromMinutes(10);
+    public TimeSpan? SlidingExpiration => TimeSpan.FromMinutes(10); //[cite: 51]
 
-    public TimeSpan? AbsoluteExpiration => TimeSpan.FromHours(1);
+    public TimeSpan? AbsoluteExpiration => TimeSpan.FromHours(1); //[cite: 51]
 }

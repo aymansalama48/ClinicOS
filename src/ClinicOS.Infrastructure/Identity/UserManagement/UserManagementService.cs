@@ -8,6 +8,11 @@ using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ClinicOS.Infrastructure.Identity.UserManagement;
 
@@ -36,28 +41,32 @@ public class UserManagementService(
         return Result<UserDto>.Success(new UserDto
         {
             Id = user.Id,
+            FirstName = user.FirstName,
+            MiddleName = user.MiddleName,
+            LastName = user.LastName,
             FullName = user.FullName,
             Email = user.Email!,
             PhoneNumber = user.PhoneNumber,
+            AvatarUrl = user.AvatarUrl,
             Roles = roles.ToList(),
-            IsActive = user.IsActive
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt
         });
     }
+
     public async Task<List<UserDto>> GetUsersByIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken)
     {
-        // هنا إحنا في الـ Infrastructure، فعادي جداً نستخدم ApplicationUser
-        return await userManager.Users // أو _context.Users
+        return await userManager.Users
             .Where(u => userIds.Contains(u.Id))
             .Select(u => new UserDto
             {
                 Id = u.Id,
                 FirstName = u.FirstName,
                 LastName = u.LastName,
-                FullName = string.IsNullOrWhiteSpace(u.MiddleName)
-                           ? (u.FirstName + " " + u.LastName).Trim()
-                           : (u.FirstName + " " + u.MiddleName + " " + u.LastName).Trim(),
+                FullName = u.FullName,
                 AvatarUrl = u.AvatarUrl,
-                Email = u.Email,
+                Email = u.Email!,
                 IsActive = u.IsActive
             })
             .ToListAsync(cancellationToken);
@@ -78,8 +87,7 @@ public class UserManagementService(
     }
 
     /// <summary>
-    /// تعطيل تسجيل الدخول + إلغاء كل الجلسات الشغالة (Refresh Tokens) فورًا
-    /// عشان موظف اتعمله Deactivate ميقدرش يستخدم السيستم حتى لو معاه Refresh Token صالح
+    /// تعطيل تسجيل الدخول + إلغاء كل الجلسات الشغالة
     /// </summary>
     public async Task<Result> DeactivateUserAsync(
         Guid userId,
@@ -102,7 +110,6 @@ public class UserManagementService(
             return Result.Failure(UserErrors.UpdateFailed(errors));
         }
 
-        // إلغاء كل الجلسات الشغالة فورًا (كل الأجهزة)
         await refreshTokenService.RevokeAllUserTokensAsync(userId, cancellationToken);
 
         logger.LogInformation("تم تعطيل المستخدم {UserId} وإلغاء كل جلساته بنجاح", userId);
@@ -138,7 +145,7 @@ public class UserManagementService(
     }
 
     /// <summary>
-    /// تحديث البيانات الأساسية (الاسم ورقم الهاتف)
+    /// تحديث البيانات الأساسية
     /// </summary>
     public async Task<Result> UpdateProfileAsync(
         Guid userId,
@@ -150,19 +157,15 @@ public class UserManagementService(
         if (user is null)
             return Result.Failure(UserErrors.NotFound);
 
-        // التحقق من صحة البيانات
         if (string.IsNullOrWhiteSpace(fullName))
             return Result.Failure(UserErrors.ValidationFailed("الاسم مطلوب"));
 
-        // تحديث الاسم (تقسيم الاسم الكامل إلى FirstName و LastName)
         var nameParts = fullName.Trim().Split(' ', 2);
         user.FirstName = nameParts[0];
         user.LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
 
-        // تحديث رقم الهاتف
         if (!string.IsNullOrWhiteSpace(phoneNumber))
         {
-            // التحقق من أن رقم الهاتف غير مستخدم من قبل مستخدم آخر
             var existingUser = await userManager.Users
                 .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber && u.Id != userId, cancellationToken);
 
@@ -196,7 +199,6 @@ public class UserManagementService(
         if (user is null)
             return Result.Failure(UserErrors.NotFound);
 
-        // التحقق من صحة الرابط (اختياري)
         if (!string.IsNullOrWhiteSpace(avatarUrl) && !Uri.IsWellFormedUriString(avatarUrl, UriKind.Absolute))
             return Result.Failure(UserErrors.ValidationFailed("رابط الصورة غير صالح"));
 
@@ -214,8 +216,130 @@ public class UserManagementService(
         return Result.Success("تم تحديث الصورة بنجاح");
     }
 
-    public Task<PagedResult<UserDto>> GetAllUsersAsync(int pageNumber, int pageSize, string? role, string? searchTerm, CancellationToken cancellationToken)
+    /// <summary>
+    /// جلب قائمة المستخدمين لمدير النظام (CRM) مع البحث والتصفية وتقسيم الصفحات
+    /// </summary>
+    public async Task<PagedResult<UserDto>> GetAllUsersAsync(
+        int pageNumber,
+        int pageSize,
+        string? role,
+        string? searchTerm,
+        CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var query = userManager.Users.AsQueryable();
+
+        // 1. فلترة بالدور (Role)
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            var usersInRole = await userManager.GetUsersInRoleAsync(role);
+            var userIdsInRole = usersInRole.Select(u => u.Id).ToList();
+            query = query.Where(u => userIdsInRole.Contains(u.Id));
+        }
+
+        // 2. فلترة بنص البحث (SearchTerm)
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.ToLower();
+            query = query.Where(u =>
+                (u.FirstName != null && u.FirstName.ToLower().Contains(term)) ||
+                (u.MiddleName != null && u.MiddleName.ToLower().Contains(term)) ||
+                (u.LastName != null && u.LastName.ToLower().Contains(term)) ||
+                (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                (u.PhoneNumber != null && u.PhoneNumber.Contains(term))
+            );
+        }
+
+        // 3. حساب إجمالي عدد العناصر
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        // 4. جلب عناصر الصفحة الحالية
+        var users = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        // 5. تحويل البيانات (Mapping) وإضافة الأدوار
+        var userDtos = new List<UserDto>();
+        foreach (var user in users)
+        {
+            var userRoles = await userManager.GetRolesAsync(user);
+
+            userDtos.Add(new UserDto
+            {
+                Id = user.Id,
+                FirstName = user.FirstName,
+                MiddleName = user.MiddleName,
+                LastName = user.LastName,
+                FullName = user.FullName,
+                Email = user.Email!,
+                PhoneNumber = user.PhoneNumber,
+                AvatarUrl = user.AvatarUrl,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                LastLoginAt = user.LastLoginAt,
+                Roles = userRoles.ToList()
+            });
+        }
+
+        // 6. تجهيز الرد في شكل PagedResult مباشر
+        var pagedResult = new PagedResult<UserDto>
+        {
+            Items = userDtos,
+            Pagination = new PaginationMetadata
+            {
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            }
+        };
+
+        return pagedResult; // 👈 التعديل هنا: إرجاع مباشر بدون Result.Success
+    }
+
+    public async Task<Result> AssignRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+            return Result.Failure(UserErrors.NotFound);
+
+        // لو اليوزر معاه الرول أصلاً، مش محتاجين نعمل حاجة ونرجع نجاح
+        if (await userManager.IsInRoleAsync(user, roleName))
+            return Result.Success();
+
+        var result = await userManager.AddToRoleAsync(user, roleName);
+
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            logger.LogWarning("فشل إضافة الدور {RoleName} للمستخدم {UserId}: {Errors}", roleName, userId, errors);
+            return Result.Failure(UserErrors.UpdateFailed(errors)); // تأكد إنك ضايف Error للـ UpdateFailed أو استخدم واحد مناسب
+        }
+
+        logger.LogInformation("تم إضافة الدور {RoleName} للمستخدم {UserId} بنجاح", roleName, userId);
+        return Result.Success();
+    }
+
+    public async Task<Result> RemoveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+            return Result.Failure(UserErrors.NotFound);
+
+        // لو اليوزر معهوش الرول أصلاً، نرجع نجاح لأن الهدف متحقق
+        if (!await userManager.IsInRoleAsync(user, roleName))
+            return Result.Success();
+
+        var result = await userManager.RemoveFromRoleAsync(user, roleName);
+
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            logger.LogWarning("فشل سحب الدور {RoleName} من المستخدم {UserId}: {Errors}", roleName, userId, errors);
+            return Result.Failure(UserErrors.UpdateFailed(errors));
+        }
+
+        logger.LogInformation("تم سحب الدور {RoleName} من للمستخدم {UserId} بنجاح", roleName, userId);
+        return Result.Success();
     }
 }

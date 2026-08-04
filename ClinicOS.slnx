@@ -6,4 +6,7 @@
     <Project Path="src/ClinicOS.Domain/ClinicOS.Domain.csproj" />
     <Project Path="src/ClinicOS.Infrastructure/ClinicOS.Infrastructure.csproj" />
   </Folder>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
 </Solution>

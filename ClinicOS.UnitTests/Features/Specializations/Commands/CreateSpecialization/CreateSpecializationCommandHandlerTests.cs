@@ -1,13 +1,15 @@
-﻿using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Errors.Specializations;
 using ClinicOS.Application.Features.Specializations.Commands.CreateSpecialization;
 using ClinicOS.Domain.Entities.Specializations;
-using Moq;
-using Xunit;
+using ClinicOS.UnitTests.Common;
 using FluentAssertions;
+using Moq;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace ClinicOS.UnitTests.Features.Specializations.Commands.CreateSpecialization;
 
@@ -18,19 +20,7 @@ public class CreateSpecializationCommandHandlerTests
 
     public CreateSpecializationCommandHandlerTests()
     {
-        _contextMock = new Mock<IApplicationDbContext>();
-
-        // 1. محاكاة الـ IQueryable (مبقاش في DbSet خلاص)
-        var emptySpecializations = new List<Specialization>().AsQueryable();
-        _contextMock.Setup(c => c.Specializations).Returns(emptySpecializations);
-
-        // 2. محاكاة دالة Add الجديدة اللي ضفناها في الواجهة
-        _contextMock.Setup(c => c.Add(It.IsAny<Specialization>()));
-
-        // 3. محاكاة حفظ التغييرات
-        _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(1);
-
+        _contextMock = MockDbContextHelper.CreateBaseMock();
         _handler = new CreateSpecializationCommandHandler(_contextMock.Object);
     }
 
@@ -38,6 +28,9 @@ public class CreateSpecializationCommandHandlerTests
     public async Task Handle_Should_Create_Specialization_And_Return_Success_Result()
     {
         // Arrange
+        var specializations = new List<Specialization>().AsQueryable();
+        _contextMock.Setup(c => c.Specializations).Returns(specializations);
+
         var command = new CreateSpecializationCommand("Cardiology", "Heart and cardiovascular care");
 
         // Act
@@ -46,20 +39,38 @@ public class CreateSpecializationCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.IsSuccess.Should().BeTrue();
+        result.Data.Should().NotBeEmpty();
 
-        // (ملاحظة: لو الـ Result بتاعك مش بيرجع Data، شيل السطر اللي تحت ده)
-        // result.Data.Should().NotBeEmpty(); 
-
-        // 4. التأكد من استدعاء دالة Add المباشرة من الـ Context
         _contextMock.Verify(
             c => c.Add(It.Is<Specialization>(sp =>
                 sp.Name == command.Name &&
                 sp.Description == command.Description)),
             Times.Once);
 
-        // التأكد من حفظ التغييرات في قاعدة البيانات
         _contextMock.Verify(
             c => c.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_Should_Return_Failure_When_Name_Is_Duplicate()
+    {
+        // Arrange
+        var existing = new Specialization("Cardiology", "Existing");
+        var specializations = new List<Specialization> { existing }.AsQueryable();
+        _contextMock.Setup(c => c.Specializations).Returns(specializations);
+
+        var command = new CreateSpecializationCommand("Cardiology", "New Description");
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(SpecializationErrors.DuplicateName);
+
+        _contextMock.Verify(c => c.Add(It.IsAny<Specialization>()), Times.Never);
+        _contextMock.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

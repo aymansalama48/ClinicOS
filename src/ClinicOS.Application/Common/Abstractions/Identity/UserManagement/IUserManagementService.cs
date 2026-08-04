@@ -46,6 +46,21 @@ public interface IUserManagementService
         Guid userId,
         string avatarUrl,
         CancellationToken cancellationToken);
+    /// <summary>
+    /// إضافة دور (Role) لمستخدم معين
+    /// </summary>
+    Task<Result> AssignRoleAsync(
+        Guid userId,
+        string roleName,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// سحب دور (Role) من مستخدم معين
+    /// </summary>
+    Task<Result> RemoveRoleAsync(
+        Guid userId,
+        string roleName,
+        CancellationToken cancellationToken);
 }
 /// <summary>
 /// بيانات المستخدم الأساسية (تستخدم للـ Staff والمريض صاحب الحساب الدائم)
