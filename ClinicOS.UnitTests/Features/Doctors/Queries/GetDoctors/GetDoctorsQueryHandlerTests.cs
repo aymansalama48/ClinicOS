@@ -1,5 +1,5 @@
 using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Application.Features.Doctors.Queries.GetDoctors;
 using ClinicOS.Domain.Entities.Doctors;

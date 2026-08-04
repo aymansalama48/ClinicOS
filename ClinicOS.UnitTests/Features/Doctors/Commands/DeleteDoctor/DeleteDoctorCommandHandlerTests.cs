@@ -1,5 +1,5 @@
 using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Doctors;
 using ClinicOS.Application.Features.Doctors.Commands.DeleteDoctor;
 using ClinicOS.Domain.Entities.Doctors;

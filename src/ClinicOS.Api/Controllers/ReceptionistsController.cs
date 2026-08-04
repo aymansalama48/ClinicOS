@@ -9,6 +9,7 @@ using ClinicOS.Application.Features.Receptionists.Commands.UpdateMyProfile;
 using ClinicOS.Application.Features.Receptionists.Queries.GetMyProfile;
 using ClinicOS.Application.Features.Receptionists.Queries.GetReceptionistById;
 using ClinicOS.Application.Features.Receptionists.Queries.GetReceptionists;
+using ClinicOS.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -20,6 +21,7 @@ public class ReceptionistsController : BaseApiController
 {
 
     [HttpGet]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IResult> GetReceptionists(
         [FromQuery] GetReceptionistsRequest request, // 👈 استخدام الـ Request الشيك
         CancellationToken cancellationToken)
@@ -40,6 +42,7 @@ public class ReceptionistsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IResult> GetReceptionistById(
         Guid id,
         CancellationToken cancellationToken)
@@ -48,6 +51,7 @@ public class ReceptionistsController : BaseApiController
         return HandleResult(result);
     }
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IResult> DeleteReceptionist(
         Guid id,
         CancellationToken cancellationToken)
@@ -57,7 +61,7 @@ public class ReceptionistsController : BaseApiController
     }
 
     [HttpPost("me/profile")]
-    [Authorize(Roles = "Receptionist")]
+    [Authorize(Roles = Roles.Receptionist)]
     public async Task<IResult> CompleteMyProfile(
         [FromBody] CompleteMyReceptionistProfileRequest request,
         CancellationToken cancellationToken)
@@ -68,7 +72,7 @@ public class ReceptionistsController : BaseApiController
     }
 
     [HttpPut("me/profile")]
-    [Authorize(Roles = "Receptionist")]
+    [Authorize(Roles = Roles.Receptionist)]
     public async Task<IResult> UpdateMyProfile(
         [FromBody] UpdateMyReceptionistProfileRequest request,
         CancellationToken cancellationToken)
@@ -79,7 +83,7 @@ public class ReceptionistsController : BaseApiController
     }
 
     [HttpGet("me/profile")]
-    [Authorize(Roles = "Receptionist")]
+    [Authorize(Roles = Roles.Receptionist)]
     public async Task<IResult> GetMyProfile(CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(new GetMyReceptionistProfileQuery(), cancellationToken);

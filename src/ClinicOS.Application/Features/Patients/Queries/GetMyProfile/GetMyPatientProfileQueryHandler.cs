@@ -1,6 +1,6 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
+using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Users;
 using ClinicOS.Domain.Common.Results;
 using System;
@@ -13,9 +13,9 @@ namespace ClinicOS.Application.Features.Patients.Queries.GetMyProfile;
 public sealed class GetMyPatientProfileQueryHandler : IQueryHandler<GetMyPatientProfileQuery, PatientProfileResponse>
 {
     private readonly ICurrentUser _currentUser;
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetMyPatientProfileQueryHandler(ICurrentUser currentUser, IApplicationDbContext context)
+    public GetMyPatientProfileQueryHandler(ICurrentUser currentUser, IReadDbContext context)
     {
         _currentUser = currentUser;
         _context = context;
@@ -30,11 +30,11 @@ public sealed class GetMyPatientProfileQueryHandler : IQueryHandler<GetMyPatient
 
         var patientId = _currentUser.UserId.Value;
 
-        // ðŸ‘ˆ Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø¯ÙˆØ§Ù„ IApplicationDbContext Ø§Ù„Ù…Ø®ØµØµØ© Ø§Ù„Ø®Ø§ØµØ© Ø¨Ùƒ
+        // ?? ÇÓÊÎÏÇã ÏæÇá IReadDbContext ÇáãÎÕÕÉ ÇáÎÇÕÉ Èß
         var query = _context.Patients.Where(p => p.Id == patientId && !p.IsDeleted);
         var noTrackingQuery = _context.AsNoTracking(query);
 
-        var patient = await _context.FirstOrDefaultAsync(noTrackingQuery, cancellationToken);
+        var patient = await noTrackingQuery.FirstOrDefaultAsync(cancellationToken);
 
         if (patient is null)
         {

@@ -6,6 +6,7 @@ using ClinicOS.Application.Features.Accounts.StaffInvitations.Commands.AcceptInv
 using ClinicOS.Application.Features.Accounts.StaffInvitations.Commands.AcceptInvitationWithGoogle;
 using ClinicOS.Application.Features.Accounts.StaffInvitations.Commands.SendInvitation;
 using ClinicOS.Application.Features.Accounts.StaffInvitations.Queries.ValidateInvitation;
+using ClinicOS.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,7 @@ public class StaffInvitationsController : BaseApiController
     /// إرسال دعوة لموظف جديد (خاص بالأدمن فقط)
     /// </summary>
     [HttpPost("send")]
-    //[Authorize(Roles = "Admin")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IResult> SendInvitation(
         [FromBody] SendStaffInvitationRequest request,
         CancellationToken cancellationToken)

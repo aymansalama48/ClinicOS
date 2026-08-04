@@ -3,6 +3,7 @@ using ClinicOS.Application;
 using ClinicOS.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,9 +16,14 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddApplicationServices(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
-        // 1. تسجيل طبقات البنية التحتية والتطبيقات
+        // 1. Security & Rate Limiting
+        services.ValidateSecurityConfiguration(configuration, environment);
+        services.AddApplicationRateLimiting();
+
+        // 2. تسجيل طبقات البنية التحتية والتطبيقات
         services.AddInfrastructure(configuration);
         services.AddApplication();
 
@@ -44,6 +50,7 @@ public static class ServiceCollectionExtensions
         // 3. إضافة دعم الـ ProblemDetails والـ Global Exception Handler
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddApplicationSignalR();
 
         // 4. الصلاحيات والتوثيق المكتبي والـ CORS
         services.AddAuthorization();

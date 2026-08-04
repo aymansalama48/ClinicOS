@@ -10,19 +10,20 @@ public class SpecializationConfiguration : IEntityTypeConfiguration<Specializati
     {
         builder.ToTable("Specializations");
 
-        builder.Property(s => s.Name)
-            .HasMaxLength(100)
-            .IsRequired();
+        builder.Property(s => s.Name).HasMaxLength(100).IsRequired();
+        builder.Property(s => s.Description).HasMaxLength(500);
+        builder.Property(s => s.IsActive).HasDefaultValue(true);
 
-        builder.Property(s => s.Description)
-            .HasMaxLength(500);
-
-        // فريد فقط بين السجلات النشطة
-        builder.HasIndex(s => new { s.Name, s.IsDeleted })
+        builder.HasIndex(s => s.Name)
             .IsUnique()
-            .HasDatabaseName("IX_Specializations_Name_IsDeleted")
-            .HasFilter("IsDeleted = 0");
+            .HasDatabaseName("IX_Specializations_Name")
+            .HasFilter("[IsDeleted] = 0");
 
+        // ربط علاقة الصورة (الأيقونة) بجدول Attachments
+        builder.HasOne(s => s.IconAttachment)
+            .WithMany()
+            .HasForeignKey(s => s.IconAttachmentId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(s => s.Doctors)
             .WithOne(d => d.Specialization)

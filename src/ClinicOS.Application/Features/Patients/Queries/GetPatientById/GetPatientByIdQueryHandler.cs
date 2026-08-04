@@ -1,5 +1,5 @@
-﻿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Patients;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -10,9 +10,9 @@ namespace ClinicOS.Application.Features.Patients.Queries.GetPatientById;
 
 public sealed class GetPatientByIdQueryHandler : IQueryHandler<GetPatientByIdQuery, PatientDetailsResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetPatientByIdQueryHandler(IApplicationDbContext context)
+    public GetPatientByIdQueryHandler(IReadDbContext context)
     {
         _context = context;
     }

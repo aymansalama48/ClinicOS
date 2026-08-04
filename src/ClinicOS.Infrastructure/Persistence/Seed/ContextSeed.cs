@@ -1,4 +1,4 @@
-﻿using ClinicOS.Domain.Constants;
+using ClinicOS.Domain.Constants;
 using ClinicOS.Infrastructure.Persistence.IdentityModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -86,6 +86,37 @@ public static class ContextSeed
             {
                 await dbContext.Set<TbRolePermission>().AddRangeAsync(newRolePermissions);
                 await dbContext.SaveChangesAsync();
+            }
+        }
+    }
+
+    public static async Task SeedDefaultAdminAsync(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager)
+    {
+        var adminEmail = "admin@clinicos.com";
+        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
+
+        if (existingAdmin == null)
+        {
+            var adminUser = new ApplicationUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                FirstName = "System",
+                LastName = "Admin",
+                IsActive = true
+            };
+
+            var result = await userManager.CreateAsync(adminUser, "Admin@12345");
+            if (result.Succeeded)
+            {
+                if (await roleManager.RoleExistsAsync(Roles.Admin))
+                {
+                    await userManager.AddToRoleAsync(adminUser, Roles.Admin);
+                }
             }
         }
     }

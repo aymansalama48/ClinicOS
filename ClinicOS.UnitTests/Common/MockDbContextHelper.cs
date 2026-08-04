@@ -1,4 +1,4 @@
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Domain.Entities.Doctors;
 using ClinicOS.Domain.Entities.Patients;
 using ClinicOS.Domain.Entities.Receptionists;

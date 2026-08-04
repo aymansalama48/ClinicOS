@@ -1,4 +1,4 @@
-﻿using ClinicOS.Api.Controllers.Base;
+using ClinicOS.Api.Controllers.Base;
 using ClinicOS.Application.Common.Abstractions.External.FileStorage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,9 +31,10 @@ public class TestFilesController : BaseApiController
         await using var stream = file.OpenReadStream();
 
         var result = await _fileStorage.UploadAsync(
-            stream,
-            file.FileName,
-            folderName);
+            fileStream: stream,
+            storedFileName: file.FileName,
+            folderName: folderName,
+            contentType: file.ContentType);
 
         return HandleResult(result);
     }

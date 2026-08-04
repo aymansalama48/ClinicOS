@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,6 +9,8 @@ namespace ClinicOS.Application.Features.Specializations.Shared
         Guid Id,
         string Name,
         string? Description,
+        bool IsActive,
+        Guid? IconAttachmentId,
         List<SpecializationScheduleResponse> Schedules
     );
 }

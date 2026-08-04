@@ -12,9 +12,11 @@ public class SpecializationScheduleConfiguration : IEntityTypeConfiguration<Spec
 
         builder.Property(ss => ss.StartTime).IsRequired();
         builder.Property(ss => ss.EndTime).IsRequired();
+        builder.Property(ss => ss.IsActive).HasDefaultValue(true);
 
         builder.HasIndex(ss => new { ss.SpecializationId, ss.DayOfWeek, ss.Period })
             .IsUnique()
-            .HasDatabaseName("IX_SpecializationSchedules_Specialization_Day_Period");
+            .HasDatabaseName("IX_SpecializationSchedules_Specialization_Day_Period")
+            .HasFilter("[IsDeleted] = 0");
     }
 }

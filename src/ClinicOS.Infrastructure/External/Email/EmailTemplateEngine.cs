@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization; // 👈 تم إضافة مكتبة الثقافة
 using System.IO;
@@ -42,7 +42,7 @@ namespace ClinicOS.Infrastructure.External.Email
             foreach (var prop in properties)
             {
                 var val = prop.GetValue(model);
-                values[prop.Name] = val;
+                values[prop.Name] = val ?? string.Empty;
             }
 
             // 1. معالجة الشروط {{#if ...}} و {{else}} و {{/if}}

@@ -1,6 +1,6 @@
-﻿using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
+using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Doctors;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -22,12 +22,12 @@ public sealed class DeleteDoctorCommandHandler : ICommandHandler<DeleteDoctorCom
 
     public async Task<Result<bool>> Handle(DeleteDoctorCommand request, CancellationToken cancellationToken)
     {
-        var doctor = await _context.FirstOrDefaultAsync(
-            _context.Doctors.Where(d => d.Id == request.Id), cancellationToken);
+        var doctor = await 
+            _context.Doctors.Where(d => d.Id == request.Id).FirstOrDefaultAsync(cancellationToken);
 
         if (doctor is null) return Result<bool>.Failure(DoctorErrors.NotFound);
 
-        _context.Remove(doctor);
+        _context.Doctors.Remove(doctor);
         await _context.SaveChangesAsync(cancellationToken);
 
         await _userService.DeactivateUserAsync(doctor.ApplicationUserId, cancellationToken);

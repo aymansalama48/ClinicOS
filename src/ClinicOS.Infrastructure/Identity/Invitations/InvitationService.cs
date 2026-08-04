@@ -10,7 +10,7 @@ using ClinicOS.Application.Common.Abstractions.Core;
 using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Application.Common.Abstractions.Identity.Invitations;
 using ClinicOS.Application.Common.Abstractions.Identity.Providers;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Invitations;
 using ClinicOS.Application.Common.Errors.Users;
 using ClinicOS.Domain.Common.Results;
@@ -64,7 +64,7 @@ public sealed class InvitationService(
             adminName: currentUser.FullName ?? "System Admin",
             specializationId: specializationId);
 
-        context.Add(invitation);
+        context.StaffInvitations.Add(invitation);
         await context.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("تم إنشاء سجل الدعوة بنجاح للبريد {Email}", email);

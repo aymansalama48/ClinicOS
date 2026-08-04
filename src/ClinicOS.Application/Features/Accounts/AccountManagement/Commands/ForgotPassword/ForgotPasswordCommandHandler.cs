@@ -42,6 +42,7 @@ public sealed class ForgotPasswordCommandHandler(
             request.Email,
             result.Data);
 
+        Console.WriteLine("Reeeeees "+resetLink);
         // 4. تجهيز نموذج قالب البريد الإلكتروني وسحب IP و UserAgent من الـ ClientContext
         var templateModel = new ResetPasswordTemplateModel
         {
@@ -49,7 +50,6 @@ public sealed class ForgotPasswordCommandHandler(
             IpAddress = clientContext.IpAddress ?? string.Empty,
             UserAgent = clientContext.UserAgent ?? string.Empty
         };
-
         // 5. جدولة إرسال البريد كـ Background Job لضمان السرعة وعدم التعطيل
         jobScheduler.Enqueue<IIdentityNotificationService>(
             sender => sender.SendResetPasswordEmailAsync(

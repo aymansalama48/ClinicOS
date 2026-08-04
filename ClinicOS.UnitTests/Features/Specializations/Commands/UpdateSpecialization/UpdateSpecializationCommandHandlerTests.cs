@@ -1,4 +1,4 @@
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Specializations;
 using ClinicOS.Application.Features.Specializations.Commands.UpdateSpecialization;
 using ClinicOS.Domain.Entities.Specializations;

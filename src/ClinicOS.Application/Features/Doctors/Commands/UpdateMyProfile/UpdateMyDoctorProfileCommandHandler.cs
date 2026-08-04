@@ -1,6 +1,6 @@
-﻿using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
+using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Doctors;
 using ClinicOS.Domain.Common.Results;
 using System;
@@ -23,8 +23,8 @@ public sealed class UpdateMyDoctorProfileCommandHandler : ICommandHandler<Update
 
     public async Task<Result<Guid>> Handle(UpdateMyDoctorProfileCommand request, CancellationToken cancellationToken)
     {
-        var doctor = await _context.FirstOrDefaultAsync(
-            _context.Doctors.Where(d => d.ApplicationUserId == _currentUser.UserId), cancellationToken);
+        var doctor = await 
+            _context.Doctors.Where(d => d.ApplicationUserId == _currentUser.UserId).FirstOrDefaultAsync(cancellationToken);
 
         if (doctor is null) return Result<Guid>.Failure(DoctorErrors.ProfileNotFound);
 
@@ -36,7 +36,7 @@ public sealed class UpdateMyDoctorProfileCommandHandler : ICommandHandler<Update
             request.UrgentSurchargeFee
         );
 
-        _context.Update(doctor);
+        _context.Doctors.Update(doctor);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(doctor.Id);

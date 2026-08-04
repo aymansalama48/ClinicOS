@@ -1,6 +1,6 @@
-﻿using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
+using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Doctors;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -12,10 +12,10 @@ namespace ClinicOS.Application.Features.Doctors.Queries.GetMyProfile;
 
 public sealed class GetMyDoctorProfileQueryHandler : IQueryHandler<GetMyDoctorProfileQuery, DoctorProfileResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
     private readonly ICurrentUser _currentUser;
 
-    public GetMyDoctorProfileQueryHandler(IApplicationDbContext context, ICurrentUser currentUser)
+    public GetMyDoctorProfileQueryHandler(IReadDbContext context, ICurrentUser currentUser)
     {
         _context = context;
         _currentUser = currentUser;
@@ -23,9 +23,8 @@ public sealed class GetMyDoctorProfileQueryHandler : IQueryHandler<GetMyDoctorPr
 
     public async Task<Result<DoctorProfileResponse>> Handle(GetMyDoctorProfileQuery request, CancellationToken cancellationToken)
     {
-        var doctor = await _context.FirstOrDefaultAsync(
-            _context.AsNoTracking(_context.Doctors).Where(d => d.ApplicationUserId == _currentUser.UserId),
-            cancellationToken);
+        var doctor = await 
+            _context.AsNoTracking(_context.Doctors).Where(d => d.ApplicationUserId == _currentUser.UserId).FirstOrDefaultAsync(cancellationToken);
 
         if (doctor is null) return Result<DoctorProfileResponse>.Failure(DoctorErrors.ProfileNotFound);
 

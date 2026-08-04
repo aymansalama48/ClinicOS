@@ -1,8 +1,8 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
+using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Receptionists;
-using ClinicOS.Application.Common.Errors.Users; // ğŸ‘ˆ Ø¶ÙÙ†Ø§ Ø¯Ù‡ Ø¹Ø´Ø§Ù† UserErrors
+using ClinicOS.Application.Common.Errors.Users; // ?? ÖİäÇ Ïå ÚÔÇä UserErrors
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Domain.Entities.Receptionists;
 using System;
@@ -25,7 +25,7 @@ public sealed class CompleteMyReceptionistProfileCommandHandler : ICommandHandle
 
     public async Task<Result<Guid>> Handle(CompleteMyReceptionistProfileCommand request, CancellationToken cancellationToken)
     {
-        // ğŸ‘‡ Ø§Ù„ØªØ£ÙƒØ¯ Ù…Ù† Ø¥Ù† Ø§Ù„Ù€ ID Ù…ÙˆØ¬ÙˆØ¯ ÙˆÙ…ÙÙŠØ´ ÙÙŠÙ‡ Ù…Ø´ÙƒÙ„Ø©
+        // ?? ÇáÊÃßÏ ãä Åä ÇáÜ ID ãæÌæÏ æãİíÔ İíå ãÔßáÉ
         if (!_currentUser.UserId.HasValue || _currentUser.UserId.Value == Guid.Empty)
         {
             return Result<Guid>.Failure(UserErrors.NotFound);
@@ -33,15 +33,15 @@ public sealed class CompleteMyReceptionistProfileCommandHandler : ICommandHandle
 
         var userId = _currentUser.UserId.Value;
 
-        // Ø§Ø³ØªØ®Ø¯Ù…Ù†Ø§ Ø§Ù„Ù…ØªØºÙŠØ± Ø§Ù„Ø¬Ø¯ÙŠØ¯ (userId) Ø¨Ø¯Ù„ _currentUser.UserId
-        var profileExists = await _context.AnyAsync(
-            _context.Receptionists.Where(r => r.ApplicationUserId == userId), cancellationToken);
+        // ÇÓÊÎÏãäÇ ÇáãÊÛíÑ ÇáÌÏíÏ (userId) ÈÏá _currentUser.UserId
+        var profileExists = await 
+            _context.Receptionists.Where(r => r.ApplicationUserId == userId).AnyAsync(cancellationToken);
 
         if (profileExists) return Result<Guid>.Failure(ReceptionistErrors.ProfileAlreadyExists);
 
         var receptionist = Receptionist.Create(userId, request.SpecializationId);
 
-        _context.Add(receptionist);
+        _context.Receptionists.Add(receptionist);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(receptionist.Id);

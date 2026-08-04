@@ -1,6 +1,6 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
-using ClinicOS.Application.Common.Errors.Doctors; // ğŸ‘ˆ Ø§Ø³ØªØ¯Ø¹Ø§Ø¡ ÙƒÙ„Ø§Ø³ Ø§Ù„Ø£Ø®Ø·Ø§Ø¡
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
+using ClinicOS.Application.Common.Errors.Doctors; // ?? ÇÓÊÏÚÇÁ ßáÇÓ ÇáÃÎØÇÁ
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Domain.Entities.Doctors;
 using System;
@@ -24,31 +24,31 @@ public sealed class SetDoctorAvailabilityCommandHandler
         SetDoctorAvailabilityCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† ÙˆØ¬ÙˆØ¯ Ø§Ù„Ø·Ø¨ÙŠØ¨
+        // 1. ÇáÊÍŞŞ ãä æÌæÏ ÇáØÈíÈ
         var doctorQuery = _context.Doctors.Where(d => d.Id == request.DoctorId);
-        var doctorExists = await _context.AnyAsync(doctorQuery, cancellationToken);
+        var doctorExists = await doctorQuery.AnyAsync(cancellationToken);
 
         if (!doctorExists)
         {
-            // ğŸ‘‡ Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„Ù€ Error Ø§Ù„Ù…Ù†Ø¸Ù…
+            // ?? ÇÓÊÎÏÇã ÇáÜ Error ÇáãäÙã
             return Result<Guid>.Failure(DoctorErrors.NotFound);
         }
 
-        // 2. Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø¹Ø¯Ù… ØªÙƒØ±Ø§Ø± Ù†ÙØ³ Ø§Ù„ÙØªØ±Ø©
+        // 2. ÇáÊÍŞŞ ãä ÚÏã ÊßÑÇÑ äİÓ ÇáİÊÑÉ
         var overlappingQuery = _context.DoctorAvailabilities.Where(da =>
             da.DoctorId == request.DoctorId &&
             da.DayOfWeek == request.DayOfWeek &&
             da.Period == request.Period);
 
-        var isOverlapping = await _context.AnyAsync(overlappingQuery, cancellationToken);
+        var isOverlapping = await overlappingQuery.AnyAsync(cancellationToken);
 
         if (isOverlapping)
         {
-            // ğŸ‘‡ Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„Ù€ Error Ø§Ù„Ù…Ù†Ø¸Ù…
+            // ?? ÇÓÊÎÏÇã ÇáÜ Error ÇáãäÙã
             return Result<Guid>.Failure(DoctorErrors.AvailabilityConflict);
         }
 
-        // 3. Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…ÙˆØ¹Ø¯
+        // 3. ÅäÔÇÁ ÇáãæÚÏ
         var availability = DoctorAvailability.Create(
             request.DoctorId,
             request.DayOfWeek,
@@ -57,8 +57,8 @@ public sealed class SetDoctorAvailabilityCommandHandler
             request.EndTime,
             request.MaxPatients);
 
-        // 4. Ø§Ù„Ø­ÙØ¸
-        _context.Add(availability);
+        // 4. ÇáÍİÙ
+        _context.DoctorAvailabilities.Add(availability);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(availability.Id);

@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Text.Json.Serialization;
 
 namespace ClinicOS.Domain.Common.Results
 {
@@ -35,6 +35,7 @@ namespace ClinicOS.Domain.Common.Results
         /// </summary>
         public IReadOnlyList<Error> Errors { get; }
 
+        [JsonConstructor]
         protected Result(
             bool succeeded,
             string? message,
@@ -96,6 +97,7 @@ namespace ClinicOS.Domain.Common.Results
         /// </summary>
         public T? Data { get; }
 
+        [JsonConstructor]
         private Result(bool succeeded, T? data, string? message, IEnumerable<Error>? errors) : base(succeeded, message, errors)
         {
             Data = data;

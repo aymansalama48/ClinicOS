@@ -1,4 +1,4 @@
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Receptionists;
 using ClinicOS.Application.Features.Receptionists.Queries.GetReceptionistById;
 using ClinicOS.Domain.Entities.Receptionists;

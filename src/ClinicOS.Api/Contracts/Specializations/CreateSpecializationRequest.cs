@@ -2,4 +2,5 @@ namespace ClinicOS.Api.Contracts.Specializations;
 
 public sealed record CreateSpecializationRequest(
     string Name,
-    string? Description);
+    string? Description,
+    Guid? IconAttachmentId);

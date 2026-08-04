@@ -1,7 +1,7 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
+using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
-using ClinicOS.Application.Common.Errors.Patients; // ğŸ‘ˆ Ø§Ø³ØªØ¯Ø¹Ø§Ø¡ Ø§Ù„Ø£Ø®Ø·Ø§Ø¡ Ø§Ù„Ù…Ø±ÙƒØ²ÙŠØ©
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
+using ClinicOS.Application.Common.Errors.Patients; // ?? ÇÓÊÏÚÇÁ ÇáÃÎØÇÁ ÇáãÑßÒíÉ
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
 using System.Threading;
@@ -22,16 +22,16 @@ public sealed class DeletePatientCommandHandler : ICommandHandler<DeletePatientC
 
     public async Task<Result<bool>> Handle(DeletePatientCommand request, CancellationToken cancellationToken)
     {
-        var patient = await _context.FirstOrDefaultAsync(
-            _context.Patients.Where(p => p.Id == request.Id), cancellationToken);
+        var patient = await 
+            _context.Patients.Where(p => p.Id == request.Id).FirstOrDefaultAsync(cancellationToken);
 
-        // Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„Ù€ Error Ø§Ù„Ù…Ø±ÙƒØ²ÙŠ
+        // ÇÓÊÎÏÇã ÇáÜ Error ÇáãÑßÒí
         if (patient is null) return Result<bool>.Failure(PatientErrors.NotFound);
 
-        _context.Remove(patient);
+        _context.Patients.Remove(patient);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // ğŸ‘‡ Ø§Ù„Ø­Ù„ Ø§Ù„Ù…Ø¹Ù…Ø§Ø±ÙŠ Ø§Ù„ØµØ­ÙŠØ­ Ù„Ù„Ù€ Nullable Guid
+        // ?? ÇáÍá ÇáãÚãÇÑí ÇáÕÍíÍ ááÜ Nullable Guid
         if (patient.ApplicationUserId.HasValue)
         {
             await _userService.DeactivateUserAsync(patient.ApplicationUserId.Value, cancellationToken);

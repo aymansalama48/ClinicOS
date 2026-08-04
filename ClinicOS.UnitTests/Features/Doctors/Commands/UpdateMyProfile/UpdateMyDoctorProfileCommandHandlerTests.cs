@@ -1,5 +1,5 @@
 using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Doctors;
 using ClinicOS.Application.Features.Doctors.Commands.UpdateMyProfile;
 using ClinicOS.Domain.Entities.Doctors;

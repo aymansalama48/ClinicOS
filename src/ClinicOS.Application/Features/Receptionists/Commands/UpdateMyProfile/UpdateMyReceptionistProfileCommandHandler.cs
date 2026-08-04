@@ -1,6 +1,6 @@
-﻿using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
+using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Receptionists;
 using ClinicOS.Domain.Common.Results;
 using System;
@@ -23,14 +23,14 @@ public sealed class UpdateMyReceptionistProfileCommandHandler : ICommandHandler<
 
     public async Task<Result<Guid>> Handle(UpdateMyReceptionistProfileCommand request, CancellationToken cancellationToken)
     {
-        var receptionist = await _context.FirstOrDefaultAsync(
-            _context.Receptionists.Where(r => r.ApplicationUserId == _currentUser.UserId), cancellationToken);
+        var receptionist = await 
+            _context.Receptionists.Where(r => r.ApplicationUserId == _currentUser.UserId).FirstOrDefaultAsync(cancellationToken);
 
         if (receptionist is null) return Result<Guid>.Failure(ReceptionistErrors.ProfileNotFound);
 
         receptionist.UpdateProfile(request.SpecializationId);
 
-        _context.Update(receptionist);
+        _context.Receptionists.Update(receptionist);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(receptionist.Id);

@@ -113,26 +113,71 @@ public class StaffAuthService(
     /// (اتعمل من قبل عن طريق نظام الدعوات) وإلا نظام الدعوات بيبقى بلا فايدة
     /// </summary>
     public async Task<Result<StaffAuthResponse>> LoginWithGoogleAsync(
-        string idToken,
-        CancellationToken cancellationToken = default)
+            string idToken,
+            CancellationToken cancellationToken = default)
     {
+        // 1. التأكد من وجود مزود خدمة جوجل
         var provider = externalAuthProviders.FirstOrDefault(p => p.ProviderName == "Google");
         if (provider is null)
             return Result<StaffAuthResponse>.Failure(ExternalAuthErrors.InvalidToken);
 
+        // 2. التحقق من صحة توكن جوجل المرسل
         var tokenResult = await provider.ValidateTokenAsync(idToken, cancellationToken);
         if (!tokenResult.IsSuccess)
             return Result<StaffAuthResponse>.Failure(tokenResult.Errors);
 
         var externalUser = tokenResult.Data!;
 
+        // 3. البحث عن المستخدم في قاعدة البيانات
         var user = await userManager.FindByEmailAsync(externalUser.Email);
-        if (user is null)
-            return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials); // "محتاج دعوة من الأدمن الأول"
 
+        // ==========================================
+        // 4. 👇 التعديل الجديد: استثناء حسابات الإدارة (Auto-Provisioning)
+        // ==========================================
+        if (user is null)
+        {
+            // قائمة بإيميلات الإدارة المسموح بإنشاء حسابات تلقائية لها
+            var superAdminEmails = new[] { "aymansalama48@yahoo.com", "ayman.dev@hotmail.com" };
+
+            // تجاهل حالة الأحرف عند المقارنة (OrdinalIgnoreCase)
+            if (superAdminEmails.Contains(externalUser.Email, StringComparer.OrdinalIgnoreCase))
+            {
+                // إنشاء مستخدم جديد كـ أدمن
+                user = new ApplicationUser
+                {
+                    UserName = externalUser.Email,
+                    Email = externalUser.Email,
+                     FirstName = "System",
+                     LastName = "Admin",
+                    EmailConfirmed = true, // تفعيل الإيميل تلقائياً
+                    IsActive = true        // تنشيط الحساب
+                };
+
+                // إنشاء المستخدم في الداتا بيز باستخدام UserManager عشان يعمل Hashing و Normalized Email
+                var createResult = await userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    logger.LogError("فشل في إنشاء حساب الأدمن التلقائي: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                    return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials);
+                }
+
+                // إعطاء المستخدم دور الأدمن (يفضل استخدام الثابت الخاص بك بدلاً من النص الصريح مثل Roles.Admin)
+                await userManager.AddToRoleAsync(user, "Admin");
+
+                logger.LogInformation("تم إنشاء حساب أدمن تلقائي للإيميل: {Email}", externalUser.Email);
+            }
+            else
+            {
+                // أي إيميل آخر غير مسجل في النظام وغير موجود في قائمة الـ Super Admins سيتم رفضه
+                return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials);
+            }
+        }
+
+        // 5. التحقق من أن الحساب نشط وغير موقوف
         if (!user.IsActive)
             return Result<StaffAuthResponse>.Failure(UserErrors.AccountDeactivated);
 
+        // 6. جلب الأدوار (Roles) والصلاحيات (Permissions)
         var roles = await userManager.GetRolesAsync(user);
         if (roles.Count == 0)
             return Result<StaffAuthResponse>.Failure(UserErrors.InvalidCredentials); // مش حساب Staff فعليًا
@@ -140,16 +185,19 @@ public class StaffAuthService(
         var permissions = await permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
         var specializationId = await specializationService.GetSpecializationIdAsync(user.Id, cancellationToken);
 
+        // 7. توليد الـ Access Token والـ Refresh Token الخاصين بالنظام (ClinicOS)
         var accessToken = jwtTokenGenerator.GenerateStaffToken(
             user.Id, user.Email!, user.FullName, roles, permissions, specializationId);
 
         var refreshToken = await refreshTokenService.GenerateAndSaveRefreshTokenAsync(user.Id, cancellationToken);
 
+        // 8. تحديث وقت آخر ظهور (Last Login) للمستخدم
         user.LastLoginAt = dateTime.Now;
         await userManager.UpdateAsync(user);
 
         logger.LogInformation("تم تسجيل دخول الموظف {Email} بجوجل", externalUser.Email);
 
+        // 9. إرجاع النتيجة بنجاح للـ Frontend
         return Result<StaffAuthResponse>.Success(new StaffAuthResponse
         {
             UserId = user.Id,

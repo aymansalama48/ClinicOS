@@ -1,4 +1,4 @@
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Doctors;
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Application.Features.Doctors.Queries.GetDoctorAvailabilities;

@@ -1,6 +1,6 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
+using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Users;
 using ClinicOS.Domain.Common.Results;
 using System;
@@ -30,9 +30,9 @@ public sealed class UpdateMyPatientProfileCommandHandler : ICommandHandler<Updat
 
         var patientId = _currentUser.UserId.Value;
 
-        // ðŸ‘ˆ Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø¯ÙˆØ§Ù„ IApplicationDbContext Ø§Ù„Ù…Ø®ØµØµØ©
+        // ?? ÇÓÊÎÏÇã ÏæÇá IApplicationDbContext ÇáãÎÕÕÉ
         var query = _context.Patients.Where(p => p.Id == patientId && !p.IsDeleted);
-        var patient = await _context.FirstOrDefaultAsync(query, cancellationToken);
+        var patient = await query.FirstOrDefaultAsync(cancellationToken);
 
         if (patient is null)
         {
@@ -48,8 +48,8 @@ public sealed class UpdateMyPatientProfileCommandHandler : ICommandHandler<Updat
         patient.BloodType = request.BloodType;
         patient.EmergencyContact = request.EmergencyContact;
 
-        // ðŸ‘ˆ Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø¯Ø§Ù„Ø© Update Ù…Ù† Ø§Ù„ÙˆØ§Ø¬Ù‡Ø© Ø§Ù„Ø®Ø§ØµØ© Ø¨Ùƒ
-        _context.Update(patient);
+        // ?? ÇÓÊÎÏÇã ÏÇáÉ Update ãä ÇáæÇÌåÉ ÇáÎÇÕÉ Èß
+        _context.Patients.Update(patient);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<bool>.Success(true);

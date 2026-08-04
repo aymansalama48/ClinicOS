@@ -1,5 +1,5 @@
 using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Receptionists;
 using ClinicOS.Application.Features.Receptionists.Commands.DeleteReceptionist;
 using ClinicOS.Domain.Entities.Receptionists;

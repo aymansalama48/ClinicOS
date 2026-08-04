@@ -1,6 +1,6 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
-using ClinicOS.Application.Common.Errors.Doctors; // Ø§Ø³ØªØ¯Ø¹Ø§Ø¡ Ø§Ù„Ø£Ø®Ø·Ø§Ø¡ Ø§Ù„Ù…Ù†Ø¸Ù…Ø©
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
+using ClinicOS.Application.Common.Errors.Doctors; // ÇÓÊÏÚÇÁ ÇáÃÎØÇÁ ÇáãäÙãÉ
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -12,9 +12,9 @@ namespace ClinicOS.Application.Features.Doctors.Queries.GetDoctorAvailabilities;
 public sealed class GetDoctorAvailabilitiesQueryHandler
     : IQueryHandler<GetDoctorAvailabilitiesQuery, PagedResult<DoctorAvailabilityResponse>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetDoctorAvailabilitiesQueryHandler(IApplicationDbContext context)
+    public GetDoctorAvailabilitiesQueryHandler(IReadDbContext context)
     {
         _context = context;
     }
@@ -23,30 +23,30 @@ public sealed class GetDoctorAvailabilitiesQueryHandler
         GetDoctorAvailabilitiesQuery request,
         CancellationToken cancellationToken)
     {
-        // 1. Ø§Ù„ØªØ£ÙƒØ¯ Ù…Ù† ÙˆØ¬ÙˆØ¯ Ø§Ù„Ø·Ø¨ÙŠØ¨ Ø£ÙˆÙ„Ø§Ù‹ (Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„Ù€ Errors Ø§Ù„Ù…Ù†Ø¸Ù…Ø©)
+        // 1. ÇáÊÃßÏ ãä æÌæÏ ÇáØÈíÈ ÃæáÇğ (ÈÇÓÊÎÏÇã ÇáÜ Errors ÇáãäÙãÉ)
         var doctorQuery = _context.Doctors.Where(d => d.Id == request.DoctorId);
-        var doctorExists = await _context.AnyAsync(doctorQuery, cancellationToken);
+        var doctorExists = await doctorQuery.AnyAsync(cancellationToken);
 
         if (!doctorExists)
         {
             return Result<PagedResult<DoctorAvailabilityResponse>>.Failure(DoctorErrors.NotFound);
         }
 
-        // 2. Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø¹Ù† Ø§Ù„Ù…ÙˆØ§Ø¹ÙŠØ¯
+        // 2. ÇáÇÓÊÚáÇã Úä ÇáãæÇÚíÏ
         var query = _context.DoctorAvailabilities
             .Where(da => da.DoctorId == request.DoctorId);
-        // ğŸ‘‡ ØªØ·Ø¨ÙŠÙ‚ ÙÙ„ØªØ± Ø§Ù„ÙŠÙˆÙ… Ù„Ùˆ Ø§Ù„ÙØ±ÙˆÙ†Øª Ø¥Ù†Ø¯ Ø¨Ø¹ØªÙ‡
+        // ?? ÊØÈíŞ İáÊÑ Çáíæã áæ ÇáİÑæäÊ ÅäÏ ÈÚÊå
         if (request.DayOfWeek.HasValue)
         {
             query = query.Where(da => da.DayOfWeek == request.DayOfWeek.Value);
         }
-        // 3. ØªÙØ¹ÙŠÙ„ AsNoTracking Ù…Ù† Ø§Ù„Ø£Ø¯Ø§Ù¾ØªØ± (Ø¹Ø´Ø§Ù† Ø§Ù„Ø£Ø¯Ø§Ø¡)
+        // 3. ÊİÚíá AsNoTracking ãä ÇáÃÏÇÊÑ (ÚÔÇä ÇáÃÏÇÁ)
         var noTrackingQuery = _context.AsNoTracking(query);
 
-        // 4. Ø­Ø³Ø§Ø¨ Ø§Ù„Ø¹Ø¯Ø¯ Ø§Ù„ÙƒÙ„ÙŠ (Ù„Ù„Ù€ Metadata Ø¨ØªØ§Ø¹Øª Ø§Ù„Ø¨Ø§Ø¬Ù†ÙŠØ´Ù†)
-        var totalCount = await _context.CountAsync(noTrackingQuery, cancellationToken);
+        // 4. ÍÓÇÈ ÇáÚÏÏ Çáßáí (ááÜ Metadata ÈÊÇÚÊ ÇáÈÇÌäíÔä)
+        var totalCount = await noTrackingQuery.CountAsync(cancellationToken);
 
-        // 5. ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ØªØ±ØªÙŠØ¨ ÙˆØªØ­Ø¯ÙŠØ¯ Ø§Ù„ØµÙØ­Ø© (Skip & Take)
+        // 5. ÊØÈíŞ ÇáÊÑÊíÈ æÊÍÏíÏ ÇáÕİÍÉ (Skip & Take)
         var paginatedQuery = noTrackingQuery
             .OrderBy(da => da.DayOfWeek)
             .ThenBy(da => da.Period)
@@ -61,10 +61,10 @@ public sealed class GetDoctorAvailabilitiesQueryHandler
                 da.MaxPatients
             ));
 
-        // 6. ØªÙ†ÙÙŠØ° Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù… ÙˆØ¬Ù„Ø¨ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª
-        var items = await _context.ToListAsync(paginatedQuery, cancellationToken);
+        // 6. ÊäİíĞ ÇáÇÓÊÚáÇã æÌáÈ ÇáÈíÇäÇÊ
+        var items = await paginatedQuery.ToListAsync(cancellationToken);
 
-        // 7. Ø¨Ù†Ø§Ø¡ Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ø§Ù„Ø¨Ø§Ø¬Ù†ÙŠØ´Ù† (Metadata)
+        // 7. ÈäÇÁ ãÚáæãÇÊ ÇáÈÇÌäíÔä (Metadata)
         var metadata = new PaginationMetadata
         {
             CurrentPage = request.Parameters.PageNumber,
@@ -72,7 +72,7 @@ public sealed class GetDoctorAvailabilitiesQueryHandler
             TotalCount = totalCount
         };
 
-        // 8. Ø¥Ø±Ø¬Ø§Ø¹ Ø§Ù„Ù†ØªÙŠØ¬Ø© Ù…ØªØºÙ„ÙØ© ÙÙŠ PagedResult
+        // 8. ÅÑÌÇÚ ÇáäÊíÌÉ ãÊÛáİÉ İí PagedResult
         return Result<PagedResult<DoctorAvailabilityResponse>>.Success(new PagedResult<DoctorAvailabilityResponse>
         {
             Items = items,

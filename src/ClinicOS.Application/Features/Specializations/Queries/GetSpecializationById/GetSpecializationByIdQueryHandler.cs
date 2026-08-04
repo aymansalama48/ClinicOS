@@ -1,5 +1,5 @@
 ﻿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Specializations;
 using ClinicOS.Application.Features.Specializations.Shared;
 using ClinicOS.Domain.Common.Results;
@@ -9,9 +9,9 @@ namespace ClinicOS.Application.Features.Specializations.Queries.GetSpecializatio
 
 public sealed class GetSpecializationByIdQueryHandler : IQueryHandler<GetSpecializationByIdQuery, SpecializationDetailsResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetSpecializationByIdQueryHandler(IApplicationDbContext context)
+    public GetSpecializationByIdQueryHandler(IReadDbContext context)
     {
         _context = context;
     }
@@ -21,7 +21,7 @@ public sealed class GetSpecializationByIdQueryHandler : IQueryHandler<GetSpecial
         // 1. جلب التخصص
         var query = _context.Specializations.Where(s => s.Id == request.Id && !s.IsDeleted);
         var noTrackingQuery = _context.AsNoTracking(query);
-        var specialization = await _context.FirstOrDefaultAsync(noTrackingQuery, cancellationToken);
+        var specialization = await noTrackingQuery.FirstOrDefaultAsync(cancellationToken);
 
         if (specialization is null)
         {
@@ -31,7 +31,7 @@ public sealed class GetSpecializationByIdQueryHandler : IQueryHandler<GetSpecial
         // 2. جلب المواعيد الخاصة بالتخصص ده
         var schedulesQuery = _context.SpecializationSchedules.Where(ss => ss.SpecializationId == request.Id);
         var noTrackingSchedulesQuery = _context.AsNoTracking(schedulesQuery);
-        var schedules = await _context.ToListAsync(noTrackingSchedulesQuery, cancellationToken);
+        var schedules = await noTrackingSchedulesQuery.ToListAsync(cancellationToken);
 
         // 3. تحويل المواعيد للـ Response بالترتيب اللي إنت طالبه بالظبط
         var scheduleResponses = schedules.Select(s => new SpecializationScheduleResponse(
@@ -48,6 +48,8 @@ public sealed class GetSpecializationByIdQueryHandler : IQueryHandler<GetSpecial
             specialization.Id,
             specialization.Name,
             specialization.Description,
+            specialization.IsActive,
+            specialization.IconAttachmentId,
             scheduleResponses
         );
 

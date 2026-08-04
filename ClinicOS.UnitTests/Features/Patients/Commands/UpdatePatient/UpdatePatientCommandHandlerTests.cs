@@ -1,4 +1,4 @@
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Patients;
 using ClinicOS.Application.Features.Patients.Commands.UpdatePatient;
 using ClinicOS.Domain.Entities.Patients;

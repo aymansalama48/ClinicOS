@@ -11,6 +11,9 @@ using ClinicOS.Application.Features.Doctors.Queries.GetDoctorAvailabilities;
 using ClinicOS.Application.Features.Doctors.Queries.GetDoctorById;
 using ClinicOS.Application.Features.Doctors.Queries.GetDoctors;
 using ClinicOS.Application.Features.Doctors.Queries.GetMyProfile;
+using ClinicOS.Application.Features.Doctors.Queries.GetDoctorsLookup;
+using ClinicOS.Domain.Constants;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading;
@@ -20,8 +23,16 @@ using System.Threading.Tasks;
 public class DoctorsController : BaseApiController
 {
 
+    [HttpGet("lookup")]
+    [Authorize]
+    public async Task<IResult> GetLookup([FromQuery] string? searchTerm, CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetDoctorsLookupQuery(searchTerm), cancellationToken);
+        return HandleResult(result);
+    }
 
     [HttpPost("{id:guid}/availability")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Doctor)]
     public async Task<IResult> SetDoctorAvailability(
         Guid id,
         [FromBody] SetDoctorAvailabilityRequest request,
@@ -39,6 +50,7 @@ public class DoctorsController : BaseApiController
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IResult> GetDoctors(
         [FromQuery] GetDoctorsRequest request, // 👈 استخدام الـ Request الشيك
         CancellationToken cancellationToken)
@@ -59,6 +71,7 @@ public class DoctorsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IResult> GetDoctorById(
         Guid id,
         CancellationToken cancellationToken)
@@ -68,6 +81,7 @@ public class DoctorsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/availabilities")]
+    [Authorize]
     public async Task<IResult> GetDoctorAvailabilities(
             Guid id,
             [FromQuery] GetDoctorAvailabilitiesRequest request,
@@ -88,6 +102,7 @@ public class DoctorsController : BaseApiController
         return HandleResult(result);
     }
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IResult> DeleteDoctor(
         Guid id,
         CancellationToken cancellationToken)
@@ -98,7 +113,7 @@ public class DoctorsController : BaseApiController
 
 
     [HttpPost("me/profile")]
-    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Doctor")]
+    [Authorize(Roles = Roles.Doctor)]
     public async Task<IResult> CompleteMyProfile(
         [FromBody] CompleteMyDoctorProfileRequest request,
         CancellationToken cancellationToken)
@@ -114,7 +129,7 @@ public class DoctorsController : BaseApiController
     }
 
     [HttpPut("me/profile")]
-    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Doctor")]
+    [Authorize(Roles = Roles.Doctor)]
     public async Task<IResult> UpdateMyProfile(
         [FromBody] UpdateMyDoctorProfileRequest request,
         CancellationToken cancellationToken)
@@ -130,7 +145,7 @@ public class DoctorsController : BaseApiController
     }
 
     [HttpGet("me/profile")]
-    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Doctor")]
+    [Authorize(Roles = Roles.Doctor)]
     public async Task<IResult> GetMyProfile(CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(new GetMyDoctorProfileQuery(), cancellationToken);

@@ -10,6 +10,8 @@ using ClinicOS.Application.Features.Patients.Commands.UpdatePatient;
 using ClinicOS.Application.Features.Patients.Queries.GetMyProfile;
 using ClinicOS.Application.Features.Patients.Queries.GetPatientById;
 using ClinicOS.Application.Features.Patients.Queries.GetPatients;
+using ClinicOS.Application.Features.Patients.Queries.GetPatientsLookup;
+using ClinicOS.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -19,7 +21,16 @@ using System.Threading.Tasks;
 [Route("api/[controller]")]
 public class PatientsController : BaseApiController
 {
+    [HttpGet("lookup")]
+    [Authorize]
+    public async Task<IResult> GetLookup([FromQuery] string? searchTerm, CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetPatientsLookupQuery(searchTerm), cancellationToken);
+        return HandleResult(result);
+    }
+
     [HttpPost]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Receptionist)]
     public async Task<IResult> CreatePatient(
         [FromBody] CreatePatientRequest request,
         CancellationToken cancellationToken)
@@ -40,6 +51,7 @@ public class PatientsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Receptionist)]
     public async Task<IResult> UpdatePatient(
         [FromRoute] Guid id,
         [FromBody] UpdatePatientRequest request,
@@ -62,6 +74,7 @@ public class PatientsController : BaseApiController
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IResult> GetPatients(
         [FromQuery] GetPatientsRequest request, // 👈 استخدام الـ Request الشيك
         CancellationToken cancellationToken)
@@ -81,6 +94,7 @@ public class PatientsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IResult> GetPatientById(
         Guid id,
         CancellationToken cancellationToken)
@@ -89,6 +103,7 @@ public class PatientsController : BaseApiController
         return HandleResult(result);
     }
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IResult> DeletePatient(
         Guid id,
         CancellationToken cancellationToken)
@@ -104,7 +119,7 @@ public class PatientsController : BaseApiController
     /// عرض البروفايل الشخصي للمريض (بناءً على التوكن الخاص به)
     /// </summary>
     [HttpGet("me")]
-    [Authorize] // 👈 لازم يكون مسجل دخول (Patient Token)
+    [Authorize(Roles = Roles.Patient)] // 👈 لازم يكون مسجل دخول (Patient Token)
     public async Task<IResult> GetMyProfile(CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(new GetMyPatientProfileQuery(), cancellationToken);
@@ -115,7 +130,7 @@ public class PatientsController : BaseApiController
     /// تحديث البروفايل الشخصي للمريض (بناءً على التوكن الخاص به)
     /// </summary>
     [HttpPut("me")]
-    [Authorize] // 👈 لازم يكون مسجل دخول
+    [Authorize(Roles = Roles.Patient)] // 👈 لازم يكون مسجل دخول
     public async Task<IResult> UpdateMyProfile(
         [FromBody] UpdateMyPatientProfileRequest request,
         CancellationToken cancellationToken)

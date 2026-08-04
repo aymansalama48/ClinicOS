@@ -1,6 +1,5 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="ClinicOS.UnitTests/ClinicOS.UnitTests.csproj" Id="c122e001-8f9c-44c2-aa85-bdf58f75fa0c" />
     <Project Path="src/ClinicOS.Api/ClinicOS.Api.csproj" />
     <Project Path="src/ClinicOS.Application/ClinicOS.Application.csproj" />
     <Project Path="src/ClinicOS.Domain/ClinicOS.Domain.csproj" />

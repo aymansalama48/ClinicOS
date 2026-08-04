@@ -1,10 +1,10 @@
-﻿namespace ClinicOS.Domain.Enums;
+namespace ClinicOS.Domain.Enums;
 
 /// <summary>
 /// الفترة الزمنية (صباحية أو مسائية)
 /// </summary>
 public enum PeriodType
 {
-    Morning,
-    Evening
+    Morning = 1,
+    Evening = 2
 }

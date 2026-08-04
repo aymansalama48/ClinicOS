@@ -1,5 +1,5 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Patients;
 using ClinicOS.Domain.Common.Results;
 using ClinicOS.Domain.Entities.Patients;
@@ -21,16 +21,16 @@ public sealed class CreatePatientCommandHandler : ICommandHandler<CreatePatientC
 
     public async Task<Result<Guid>> Handle(CreatePatientCommand request, CancellationToken cancellationToken)
     {
-        // 1. Ø§Ù„ØªØ­Ù‚Ù‚ Ø¥Ù† Ø±Ù‚Ù… Ø§Ù„ØªÙ„ÙŠÙÙˆÙ† Ù…Ø´ Ù…ØªÙƒØ±Ø±
+        // 1. ÇáÊÍÞÞ Åä ÑÞã ÇáÊáíÝæä ãÔ ãÊßÑÑ
         var phoneQuery = _context.Patients.Where(p => p.PhoneNumber == request.PhoneNumber);
-        var isPhoneExists = await _context.AnyAsync(phoneQuery, cancellationToken);
+        var isPhoneExists = await phoneQuery.AnyAsync(cancellationToken);
 
         if (isPhoneExists)
         {
             return Result<Guid>.Failure(PatientErrors.PhoneNumberAlreadyExists);
         }
 
-        // 2. Ø¥Ù†Ø´Ø§Ø¡ ÙƒÙŠØ§Ù† Ø§Ù„Ù…Ø±ÙŠØ¶
+        // 2. ÅäÔÇÁ ßíÇä ÇáãÑíÖ
         var patient = new Patient
         {
             FirstName = request.FirstName,
@@ -44,11 +44,11 @@ public sealed class CreatePatientCommandHandler : ICommandHandler<CreatePatientC
             ApplicationUserId = request.ApplicationUserId
         };
 
-        // 3. Ø§Ù„Ø­ÙØ¸ ÙÙŠ Ø§Ù„Ø¯Ø§ØªØ§ Ø¨ÙŠØ² Ø¹Ø¨Ø± Ø§Ù„Ù€ Context Adapter
-        _context.Add(patient);
+        // 3. ÇáÍÝÙ Ýí ÇáÏÇÊÇ ÈíÒ ÚÈÑ ÇáÜ Context Adapter
+        _context.Patients.Add(patient);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 4. Ø¥Ø±Ø¬Ø§Ø¹ Ø§Ù„Ù€ ID Ø§Ù„Ø¬Ø¯ÙŠØ¯
+        // 4. ÅÑÌÇÚ ÇáÜ ID ÇáÌÏíÏ
         return Result<Guid>.Success(patient.Id);
     }
 }

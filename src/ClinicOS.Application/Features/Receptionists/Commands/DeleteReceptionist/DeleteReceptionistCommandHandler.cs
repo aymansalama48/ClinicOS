@@ -1,7 +1,7 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
+using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
-using ClinicOS.Application.Common.Errors.Receptionists; // ğŸ‘ˆ Ø§Ø³ØªØ¯Ø¹Ø§Ø¡ Ø§Ù„Ø£Ø®Ø·Ø§Ø¡ Ø§Ù„Ù…Ø±ÙƒØ²ÙŠØ©
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
+using ClinicOS.Application.Common.Errors.Receptionists; // ?? ÇÓÊÏÚÇÁ ÇáÃÎØÇÁ ÇáãÑßÒíÉ
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
 using System.Threading;
@@ -22,16 +22,16 @@ public sealed class DeleteReceptionistCommandHandler : ICommandHandler<DeleteRec
 
     public async Task<Result<bool>> Handle(DeleteReceptionistCommand request, CancellationToken cancellationToken)
     {
-        var receptionist = await _context.FirstOrDefaultAsync(
-            _context.Receptionists.Where(r => r.Id == request.Id), cancellationToken);
+        var receptionist = await 
+            _context.Receptionists.Where(r => r.Id == request.Id).FirstOrDefaultAsync(cancellationToken);
 
-        // Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„Ù€ Error Ø§Ù„Ù…Ø±ÙƒØ²ÙŠ
+        // ÇÓÊÎÏÇã ÇáÜ Error ÇáãÑßÒí
         if (receptionist is null) return Result<bool>.Failure(ReceptionistErrors.NotFound);
 
-        _context.Remove(receptionist);
+        _context.Receptionists.Remove(receptionist);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // ØªÙ…Ø±ÙŠØ± Ø§Ù„Ù€ ID Ù„Ø®Ø¯Ù…Ø© Ø¥ÙŠÙ‚Ø§Ù Ø§Ù„Ø­Ø³Ø§Ø¨
+        // ÊãÑíÑ ÇáÜ ID áÎÏãÉ ÅíŞÇİ ÇáÍÓÇÈ
         await _userService.DeactivateUserAsync(receptionist.ApplicationUserId, cancellationToken);
 
         return Result<bool>.Success(true);

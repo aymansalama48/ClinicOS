@@ -1,5 +1,5 @@
-﻿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Application.Features.Specializations.Shared;
 using ClinicOS.Domain.Common.Results;
@@ -11,9 +11,9 @@ namespace ClinicOS.Application.Features.Specializations.Queries.GetSpecializatio
 
 public sealed class GetSpecializationsQueryHandler : IQueryHandler<GetSpecializationsQuery, PagedResult<SpecializationResponse>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetSpecializationsQueryHandler(IApplicationDbContext context) => _context = context;
+    public GetSpecializationsQueryHandler(IReadDbContext context) => _context = context;
 
     public async Task<Result<PagedResult<SpecializationResponse>>> Handle(GetSpecializationsQuery request, CancellationToken cancellationToken)
     {
@@ -25,14 +25,14 @@ public sealed class GetSpecializationsQueryHandler : IQueryHandler<GetSpecializa
         }
 
         var noTrackingQuery = _context.AsNoTracking(query);
-        var totalCount = await _context.CountAsync(noTrackingQuery, cancellationToken);
+        var totalCount = await noTrackingQuery.CountAsync(cancellationToken);
 
         var items = await _context.ToListAsync(
             noTrackingQuery
                 .OrderBy(s => s.Name)
                 .Skip(request.Parameters.Skip)
                 .Take(request.Parameters.PageSize)
-                .Select(s => new SpecializationResponse(s.Id, s.Name, s.Description)),
+                .Select(s => new SpecializationResponse(s.Id, s.Name, s.Description, s.IsActive, s.IconAttachmentId)),
             cancellationToken);
 
         return Result<PagedResult<SpecializationResponse>>.Success(new PagedResult<SpecializationResponse>

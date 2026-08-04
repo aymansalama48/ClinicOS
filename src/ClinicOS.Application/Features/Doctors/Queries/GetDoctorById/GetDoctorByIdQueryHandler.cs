@@ -1,6 +1,6 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
+using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Doctors;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -12,11 +12,11 @@ namespace ClinicOS.Application.Features.Doctors.Queries.GetDoctorById;
 public sealed class GetDoctorByIdQueryHandler
     : IQueryHandler<GetDoctorByIdQuery, DoctorDetailsResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
     private readonly IUserManagementService _userService;
 
     public GetDoctorByIdQueryHandler(
-        IApplicationDbContext context,
+        IReadDbContext context,
         IUserManagementService userService)
     {
         _context = context;
@@ -27,26 +27,26 @@ public sealed class GetDoctorByIdQueryHandler
         GetDoctorByIdQuery request,
         CancellationToken cancellationToken)
     {
-        // 1. Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø·Ø¨ÙŠØ¨ ÙƒÙ€ Entity
+        // 1. ÌáÈ ÈíÇäÇÊ ÇáØÈíÈ ßÜ Entity
         var query = _context.Doctors.Where(d => d.Id == request.Id);
         var noTrackingQuery = _context.AsNoTracking(query);
-        var doctor = await _context.FirstOrDefaultAsync(noTrackingQuery, cancellationToken);
+        var doctor = await noTrackingQuery.FirstOrDefaultAsync(cancellationToken);
 
         if (doctor is null)
         {
             return Result<DoctorDetailsResponse>.Failure(DoctorErrors.NotFound);
         }
 
-        // 2. Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø§Ù„Ù…Ø±ØªØ¨Ø· Ø¨Ø§Ù„Ø·Ø¨ÙŠØ¨
+        // 2. ÌáÈ ÈíÇäÇÊ ÇáãÓÊÎÏã ÇáãÑÊÈØ ÈÇáØÈíÈ
         var userResult = await _userService.GetByIdAsync(doctor.ApplicationUserId, cancellationToken);
         var user = userResult.IsSuccess ? userResult.Data : null;
 
-        // 3. Ø¯Ù…Ø¬ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª ÙˆØ¥Ø±Ø¬Ø§Ø¹ Ø§Ù„Ù€ DTO
+        // 3. ÏãÌ ÇáÈíÇäÇÊ æÅÑÌÇÚ ÇáÜ DTO
         var response = new DoctorDetailsResponse(
             doctor.Id,
             doctor.SpecializationId,
             doctor.ApplicationUserId,
-            user?.FullName ?? "Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…Ø¹Ø±ÙˆÙ",
+            user?.FullName ?? "ãÓÊÎÏã ÛíÑ ãÚÑæİ",
             user?.Email,
             user?.AvatarUrl,
             doctor.Bio,

@@ -4,23 +4,22 @@ namespace ClinicOS.Application.Common.Abstractions.External.FileStorage;
 
 public interface IFileStorage
 {
-    /// <summary>
-    /// رفع ملف وإرجاع المسار النسبي له.
-    /// </summary>
-    Task<Result<string>> UploadAsync(
+    Task<Result<StoredFile>> UploadAsync(
         Stream fileStream,
-        string fileName,
-        string folderName);
+        string storedFileName,
+        string folderName,
+        string contentType,
+        CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// التحقق من وجود الملف.
-    /// </summary>
-    Task<Result<bool>> ExistsAsync(
-        string filePath);
+    Task<Result<Stream>> DownloadAsync(
+        string fileId,
+        CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// حذف ملف.
-    /// </summary>
     Task<Result> DeleteAsync(
-        string filePath);
+        string fileId,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<bool>> ExistsAsync(
+        string fileId,
+        CancellationToken cancellationToken = default);
 }

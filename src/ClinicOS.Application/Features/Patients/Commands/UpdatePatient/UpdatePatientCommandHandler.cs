@@ -1,5 +1,5 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Patients;
 using ClinicOS.Domain.Common.Results;
 using System;
@@ -20,26 +20,26 @@ public sealed class UpdatePatientCommandHandler : ICommandHandler<UpdatePatientC
 
     public async Task<Result<Guid>> Handle(UpdatePatientCommand request, CancellationToken cancellationToken)
     {
-        // 1. Ø¬Ù„Ø¨ Ø§Ù„Ù…Ø±ÙŠØ¶ Ù„Ù„ØªØ¹Ø¯ÙŠÙ„ (Tracking Ø§Ù„Ø¹Ø§Ø¯ÙŠ)
+        // 1. ÌáÈ ÇáãÑíÖ ááÊÚÏíá (Tracking ÇáÚÇÏí)
         var query = _context.Patients.Where(p => p.Id == request.PatientId);
-        var patient = await _context.FirstOrDefaultAsync(query, cancellationToken);
+        var patient = await query.FirstOrDefaultAsync(cancellationToken);
 
         if (patient is null)
         {
             return Result<Guid>.Failure(PatientErrors.NotFound);
         }
 
-        // 2. Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø¹Ø¯Ù… Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ Ù„Ù…Ø±ÙŠØ¶ *Ø¢Ø®Ø±*
+        // 2. ÇáÊÍÞÞ ãä ÚÏã ÇÓÊÎÏÇã ÑÞã ÇáåÇÊÝ áãÑíÖ *ÂÎÑ*
         var phoneQuery = _context.Patients
             .Where(p => p.PhoneNumber == request.PhoneNumber && p.Id != request.PatientId);
-        var isPhoneExists = await _context.AnyAsync(phoneQuery, cancellationToken);
+        var isPhoneExists = await phoneQuery.AnyAsync(cancellationToken);
 
         if (isPhoneExists)
         {
             return Result<Guid>.Failure(PatientErrors.PhoneNumberAlreadyExists);
         }
 
-        // 3. ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª
+        // 3. ÊÍÏíË ÇáÈíÇäÇÊ
         patient.FirstName = request.FirstName;
         patient.MiddleName = request.MiddleName;
         patient.LastName = request.LastName;
@@ -50,8 +50,8 @@ public sealed class UpdatePatientCommandHandler : ICommandHandler<UpdatePatientC
         patient.EmergencyContact = request.EmergencyContact;
         patient.ApplicationUserId = request.ApplicationUserId;
 
-        // 4. Ø­ÙØ¸ Ø§Ù„ØªØ¹Ø¯ÙŠÙ„Ø§Øª
-        _context.Update(patient);
+        // 4. ÍÝÙ ÇáÊÚÏíáÇÊ
+        _context.Patients.  Update(patient);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(patient.Id);

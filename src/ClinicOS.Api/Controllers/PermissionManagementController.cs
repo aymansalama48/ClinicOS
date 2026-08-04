@@ -1,4 +1,4 @@
-﻿namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers;
 
 using ClinicOS.Api.Controllers.Base;
 using ClinicOS.Application.Features.Accounts.PermissionManagement.Commands.AssignPermissionToRole;
@@ -7,10 +7,11 @@ using ClinicOS.Application.Features.Accounts.PermissionManagement.Commands.Updat
 using ClinicOS.Application.Features.Accounts.PermissionManagement.Queries.GetAllPermissions;
 using ClinicOS.Application.Features.Accounts.PermissionManagement.Queries.GetAllRolesWithPermissions;
 using ClinicOS.Application.Features.Accounts.PermissionManagement.Queries.GetRolePermissions;
+using ClinicOS.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-[Authorize] // تأكيد أن المستخدم مسجل دخول كطبقة حماية أولى
+[Authorize(Roles = Roles.Admin)] // 👈 فقط المدير العام
 [Route("api/permission-management")]
 public class PermissionManagementController : BaseApiController
 {

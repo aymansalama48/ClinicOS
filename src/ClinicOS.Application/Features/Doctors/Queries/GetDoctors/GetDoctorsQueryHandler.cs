@@ -1,6 +1,6 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
+using ClinicOS.Application.Common.Abstractions.Identity.UserManagement;
 using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -12,11 +12,11 @@ namespace ClinicOS.Application.Features.Doctors.Queries.GetDoctors;
 public sealed class GetDoctorsQueryHandler
     : IQueryHandler<GetDoctorsQuery, PagedResult<DoctorResponse>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
     private readonly IUserManagementService _userService;
 
     public GetDoctorsQueryHandler(
-        IApplicationDbContext context,
+        IReadDbContext context,
         IUserManagementService userService)
     {
         _context = context;
@@ -27,10 +27,10 @@ public sealed class GetDoctorsQueryHandler
         GetDoctorsQuery request,
         CancellationToken cancellationToken)
     {
-        // 1. Ø¨Ù†Ø§Ø¡ Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ
+        // 1. ÈäÇÁ ÇáÇÓÊÚáÇã ÇáÃÓÇÓí
         var query = _context.Doctors.AsQueryable();
 
-        // 2. ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ÙÙ„Ø§ØªØ±
+        // 2. ÊØÈíŞ ÇáİáÇÊÑ
         if (request.SpecializationId.HasValue)
         {
             query = query.Where(d => d.SpecializationId == request.SpecializationId.Value);
@@ -42,24 +42,23 @@ public sealed class GetDoctorsQueryHandler
         }
 
         var noTrackingQuery = _context.AsNoTracking(query);
-        var totalCount = await _context.CountAsync(noTrackingQuery, cancellationToken);
+        var totalCount = await noTrackingQuery.CountAsync(cancellationToken);
 
-        // 3. Ø¬Ù„Ø¨ Ø§Ù„Ø£Ø·Ø¨Ø§Ø¡ Ù…Ù† Ù‚Ø§Ø¹Ø¯Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø¨Ø¯ÙˆÙ† Ø±Ø¨Ø· Ø§Ù„ÙŠÙˆØ²Ø±Ø²
-        var paginatedDoctors = await _context.ToListAsync(
+        // 3. ÌáÈ ÇáÃØÈÇÁ ãä ŞÇÚÏÉ ÇáÈíÇäÇÊ ÈÏæä ÑÈØ ÇáíæÒÑÒ
+        var paginatedDoctors = await 
             noTrackingQuery
                 .OrderByDescending(d => d.CreatedAt)
                 .Skip(request.Parameters.Skip)
-                .Take(request.Parameters.PageSize),
-            cancellationToken);
+                .Take(request.Parameters.PageSize).ToListAsync(cancellationToken);
 
-        // 4. Ø§Ø³ØªØ®Ø±Ø§Ø¬ IDs Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† Ù„Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§ØªÙ‡Ù…
+        // 4. ÇÓÊÎÑÇÌ IDs ÇáãÓÊÎÏãíä áÌáÈ ÈíÇäÇÊåã
         var userIds = paginatedDoctors.Select(d => d.ApplicationUserId).Distinct().ToList();
 
-        // 5. Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† Ù…Ù† Ø®Ø¯Ù…Ø© Identity ÙˆØªØ®Ø²ÙŠÙ†Ù‡Ø§ ÙÙŠ Dictionary Ù„Ø³Ø±Ø¹Ø© Ø§Ù„Ø¨Ø­Ø«
+        // 5. ÌáÈ ÈíÇäÇÊ ÇáãÓÊÎÏãíä ãä ÎÏãÉ Identity æÊÎÒíäåÇ İí Dictionary áÓÑÚÉ ÇáÈÍË
         var users = await _userService.GetUsersByIdsAsync(userIds, cancellationToken);
         var usersDict = users.ToDictionary(u => u.Id);
 
-        // 6. Ø§Ù„Ø±Ø¨Ø· ÙÙŠ Ø§Ù„Ù…ÙŠÙ…ÙˆØ±ÙŠ ÙˆØªØ¬Ù‡ÙŠØ² Ø§Ù„Ù€ DTO Ø§Ù„Ù†Ù‡Ø§Ø¦ÙŠ
+        // 6. ÇáÑÈØ İí ÇáãíãæÑí æÊÌåíÒ ÇáÜ DTO ÇáäåÇÆí
         var items = paginatedDoctors.Select(d =>
         {
             var user = usersDict.GetValueOrDefault(d.ApplicationUserId);
@@ -67,8 +66,8 @@ public sealed class GetDoctorsQueryHandler
                 d.Id,
                 d.SpecializationId,
                 d.ApplicationUserId,
-                user?.FullName ?? "Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…Ø¹Ø±ÙˆÙ", // Ø§Ù„Ø§Ø³Ù…
-                user?.Email,                          // Ø§Ù„Ø¥ÙŠÙ…ÙŠÙ„
+                user?.FullName ?? "ãÓÊÎÏã ÛíÑ ãÚÑæİ", // ÇáÇÓã
+                user?.Email,                          // ÇáÅíãíá
                 d.Bio,
                 d.YearsOfExperience,
                 d.ConsultationFee,
@@ -77,7 +76,7 @@ public sealed class GetDoctorsQueryHandler
             );
         }).ToList();
 
-        // 7. ØªØ¬Ù‡ÙŠØ² Ø§Ù„Ù†ØªÙŠØ¬Ø©
+        // 7. ÊÌåíÒ ÇáäÊíÌÉ
         var metadata = new PaginationMetadata
         {
             CurrentPage = request.Parameters.PageNumber,

@@ -1,5 +1,5 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -11,9 +11,9 @@ namespace ClinicOS.Application.Features.Receptionists.Queries.GetReceptionists;
 public sealed class GetReceptionistsQueryHandler
     : IQueryHandler<GetReceptionistsQuery, PagedResult<ReceptionistResponse>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetReceptionistsQueryHandler(IApplicationDbContext context)
+    public GetReceptionistsQueryHandler(IReadDbContext context)
     {
         _context = context;
     }
@@ -24,7 +24,7 @@ public sealed class GetReceptionistsQueryHandler
     {
         var query = _context.Receptionists.AsQueryable();
 
-        // Ø§Ù„ÙÙ„ØªØ±Ø©
+        // ÇáÝáÊÑÉ
         if (request.SpecializationId.HasValue)
         {
             query = query.Where(r => r.SpecializationId == request.SpecializationId.Value);
@@ -36,7 +36,7 @@ public sealed class GetReceptionistsQueryHandler
         }
 
         var noTrackingQuery = _context.AsNoTracking(query);
-        var totalCount = await _context.CountAsync(noTrackingQuery, cancellationToken);
+        var totalCount = await noTrackingQuery.CountAsync(cancellationToken);
 
         var paginatedQuery = noTrackingQuery
             .OrderByDescending(r => r.CreatedAt)
@@ -49,7 +49,7 @@ public sealed class GetReceptionistsQueryHandler
                 r.IsActive
             ));
 
-        var items = await _context.ToListAsync(paginatedQuery, cancellationToken);
+        var items = await paginatedQuery.ToListAsync(cancellationToken);
 
         var metadata = new PaginationMetadata
         {

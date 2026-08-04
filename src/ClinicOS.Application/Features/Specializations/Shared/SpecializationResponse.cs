@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -8,6 +8,8 @@ namespace ClinicOS.Application.Features.Specializations.Shared
     public record SpecializationResponse(
         Guid Id,
         string Name,
-        string? Description
+        string? Description,
+        bool IsActive,
+        Guid? IconAttachmentId
     );
 }

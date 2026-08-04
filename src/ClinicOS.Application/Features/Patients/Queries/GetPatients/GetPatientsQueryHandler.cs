@@ -1,5 +1,5 @@
-ï»¿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Pagination;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -11,9 +11,9 @@ namespace ClinicOS.Application.Features.Patients.Queries.GetPatients;
 public sealed class GetPatientsQueryHandler
     : IQueryHandler<GetPatientsQuery, PagedResult<PatientResponse>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetPatientsQueryHandler(IApplicationDbContext context)
+    public GetPatientsQueryHandler(IReadDbContext context)
     {
         _context = context;
     }
@@ -22,10 +22,10 @@ public sealed class GetPatientsQueryHandler
         GetPatientsQuery request,
         CancellationToken cancellationToken)
     {
-        // 1. Ø¨Ù†Ø§Ø¡ Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ
+        // 1. ÈäÇÁ ÇáÇÓÊÚáÇã ÇáÃÓÇÓí
         var query = _context.Patients.AsQueryable();
 
-        // 2. ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„Ø¨Ø­Ø« (Ù„Ùˆ Ù…ÙˆØ¸Ù Ø§Ù„Ø§Ø³ØªÙ‚Ø¨Ø§Ù„ ÙƒØªØ¨ Ø­Ø§Ø¬Ø©)
+        // 2. ÊØÈíŞ ÇáÈÍË (áæ ãæÙİ ÇáÇÓÊŞÈÇá ßÊÈ ÍÇÌÉ)
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             var search = request.SearchTerm.Trim();
@@ -35,13 +35,13 @@ public sealed class GetPatientsQueryHandler
                 p.PhoneNumber.Contains(search));
         }
 
-        // 3. ØªÙØ¹ÙŠÙ„ AsNoTracking Ù„Ù„Ø£Ø¯Ø§Ø¡ Ø§Ù„Ø¹Ø§Ù„ÙŠ
+        // 3. ÊİÚíá AsNoTracking ááÃÏÇÁ ÇáÚÇáí
         var noTrackingQuery = _context.AsNoTracking(query);
 
-        // 4. Ø­Ø³Ø§Ø¨ Ø§Ù„Ø¹Ø¯Ø¯ Ø§Ù„ÙƒÙ„ÙŠ (Ù…Ù‡Ù… Ù„Ù„Ø¨Ø§Ø¬Ù†ÙŠØ´Ù†)
-        var totalCount = await _context.CountAsync(noTrackingQuery, cancellationToken);
+        // 4. ÍÓÇÈ ÇáÚÏÏ Çáßáí (ãåã ááÈÇÌäíÔä)
+        var totalCount = await noTrackingQuery.CountAsync(cancellationToken);
 
-        // 5. ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ØªØ±ØªÙŠØ¨ ÙˆØªØ­Ø¯ÙŠØ¯ Ø§Ù„ØµÙØ­Ø© ÙˆØ§Ù„Ø­Ù‚ÙˆÙ„
+        // 5. ÊØÈíŞ ÇáÊÑÊíÈ æÊÍÏíÏ ÇáÕİÍÉ æÇáÍŞæá
         var paginatedQuery = noTrackingQuery
             .OrderByDescending(p => p.CreatedAt)
             .Skip(request.Parameters.Skip)
@@ -53,13 +53,13 @@ public sealed class GetPatientsQueryHandler
                 p.DateOfBirth,
                 p.Gender,
                 p.BloodType,
-                p.ApplicationUserId != null // ØªØ±Ø¬Ù…Ø© Ù„Ù…Ø¹Ù„ÙˆÙ…Ø© IsAccountLinked
+                p.ApplicationUserId != null // ÊÑÌãÉ áãÚáæãÉ IsAccountLinked
             ));
 
-        // 6. Ø§Ù„ØªÙ†ÙÙŠØ°
-        var items = await _context.ToListAsync(paginatedQuery, cancellationToken);
+        // 6. ÇáÊäİíĞ
+        var items = await paginatedQuery.ToListAsync(cancellationToken);
 
-        // 7. ØªØ¬Ù‡ÙŠØ² Ø§Ù„Ù†ØªÙŠØ¬Ø©
+        // 7. ÊÌåíÒ ÇáäÊíÌÉ
         var metadata = new PaginationMetadata
         {
             CurrentPage = request.Parameters.PageNumber,

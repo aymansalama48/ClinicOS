@@ -1,5 +1,5 @@
-﻿using ClinicOS.Application.Common.Abstractions.Messaging;
-using ClinicOS.Application.Common.Abstractions.Persistence;
+using ClinicOS.Application.Common.Abstractions.Messaging;
+using ClinicOS.Application.Common.Abstractions.Persistence.Data;
 using ClinicOS.Application.Common.Errors.Receptionists;
 using ClinicOS.Domain.Common.Results;
 using System.Linq;
@@ -10,9 +10,9 @@ namespace ClinicOS.Application.Features.Receptionists.Queries.GetReceptionistByI
 
 public sealed class GetReceptionistByIdQueryHandler : IQueryHandler<GetReceptionistByIdQuery, ReceptionistDetailsResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IReadDbContext _context;
 
-    public GetReceptionistByIdQueryHandler(IApplicationDbContext context)
+    public GetReceptionistByIdQueryHandler(IReadDbContext context)
     {
         _context = context;
     }

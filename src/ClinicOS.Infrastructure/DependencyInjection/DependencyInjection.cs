@@ -1,4 +1,4 @@
-﻿using ClinicOS.Application.Common.Abstractions.Core;
+using ClinicOS.Application.Common.Abstractions.Core;
 using ClinicOS.Application.Common.Abstractions.External.Client;
 using ClinicOS.Application.Common.Abstractions.External.Routing;
 using ClinicOS.Application.Common.Abstractions.Identity.CurrentUser;
@@ -29,15 +29,15 @@ public static partial class DependencyInjection
         IConfiguration configuration)
     {
         services
-               .AddCoreServices()                    // الخدمات الأساسية
-               .AddCaching()                         // تسجيل خدمات الـ Caching
+               .AddCoreServices(configuration)                    // الخدمات الأساسية
+               .AddCaching(configuration)            // تسجيل خدمات الـ Caching
                .AddPersistence(configuration)        // قاعدة البيانات
                .AddHangfireJobs(configuration)       // تسجيل خدمات Hangfire
                .AddIdentityServices()               // 👈 1. تسجيل Identity أولاً (لتجهيز الجداول و الـ Stores)
                .AddJwtAuthentication(configuration)  // 👈 2. تسجيل JWT بعدها فوراً (ليكتاب فوق الـ Default Schemes ويجعلها JWT)
                .AddExternalAuth(configuration)       // تسجيل المصادقة الخارجية (Google Auth)
                .AddMail(configuration)               // البريد الإلكتروني
-               .AddFileStorage(configuration)        // تخزين الملفات
+               .AddGoogleDriveStorage(configuration) // تخزين Google Drive
                .AddBaseUrl(configuration)            // الروابط الأساسية
                .AddOtpService(configuration);        // إضافة OTP Service
 
@@ -46,7 +46,7 @@ public static partial class DependencyInjection
     /// <summary>
     /// تسجيل خدمات السياق والبيانات الأساسية للنظام (Core Context Services)
     /// </summary>
-    private static IServiceCollection AddCoreServices(this IServiceCollection services)
+    private static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
     {
         // تمكين قراءة الـ HttpContext الحالي من أي خدمة داخل التطبيق
         services.AddHttpContextAccessor();
@@ -71,6 +71,16 @@ public static partial class DependencyInjection
         // تسجيل خدمات العميل
         services.AddScoped<IClientContext, HttpClientContext>();
         services.AddSingleton<IUserAgentParser, UserAgentParser>();
+        
+        // تسجيل إعدادات الملفات المرفقة
+        services.Configure<ClinicOS.Application.Common.Options.AttachmentSettings>(
+            configuration.GetSection(ClinicOS.Application.Common.Options.AttachmentSettings.SectionName));
+
+        // تسجيل خدمة الـ Attachments Resolver
+        services.AddSingleton<ClinicOS.Application.Common.Abstractions.Attachments.IAttachmentEntityResolver, ClinicOS.Infrastructure.Attachments.AttachmentEntityResolver>();
+
+        // تسجيل خدمة تنظيف الملفات اليتيمة
+        services.AddHostedService<ClinicOS.Infrastructure.Attachments.OrphanAttachmentsCleanupService>();
 
         // تسجيل GeoLocationService مع HttpClient مخصص وتحديد Timeout 3 ثواني فقط
         services.AddHttpClient<IGeoLocationService, GeoLocationService>(client =>

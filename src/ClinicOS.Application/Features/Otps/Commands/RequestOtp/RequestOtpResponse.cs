@@ -1,5 +1,6 @@
-﻿namespace ClinicOS.Application.Features.Otps.Commands.RequestOtp;
+namespace ClinicOS.Application.Features.Otps.Commands.RequestOtp;
 
 public sealed record RequestOtpResponse(
     DateTime ExpiresAtUtc,
-    DateTime NextResendAllowedAtUtc);
+    DateTime NextResendAllowedAtUtc,
+    string? TemporaryOtpCode = null);

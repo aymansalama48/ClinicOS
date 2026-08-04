@@ -1,4 +1,4 @@
-﻿using ClinicOS.Application.Common.Abstractions.External.Jobs;
+using ClinicOS.Application.Common.Abstractions.External.Jobs;
 using ClinicOS.Infrastructure.External.Jobs;
 using Hangfire;
 using Hangfire.SqlServer;
@@ -30,7 +30,8 @@ public static partial class DependencyInjection
                     SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
                     QueuePollInterval = TimeSpan.Zero,
                     UseRecommendedIsolationLevel = true,
-                    DisableGlobalLocks = true
+                    DisableGlobalLocks = true,
+                    SchemaName = "Hangfire"
                 }));
 
         // 2. تسجيل الـ Hangfire Processing Server في الخلفية

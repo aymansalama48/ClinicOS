@@ -1,4 +1,4 @@
-﻿namespace ClinicOS.Application.Features.Otps.Commands.RequestOtp;
+namespace ClinicOS.Application.Features.Otps.Commands.RequestOtp;
 
 using ClinicOS.Application.Common.Abstractions.External.Jobs;
 using ClinicOS.Application.Common.Abstractions.Identity.Authentication;
@@ -44,7 +44,8 @@ phoneNumber: {request.PhoneNumber}
         // 💡 تصحيح 3: تغليف الاستجابة بـ Result<T>.Success
         var response = new RequestOtpResponse(
             otpData.ExpiresAtUtc,
-            otpData.NextResendAllowedAtUtc);
+            otpData.NextResendAllowedAtUtc,
+            otpData.Code); // Temporary for development
 
         return Result<RequestOtpResponse>.Success(response);
     }
