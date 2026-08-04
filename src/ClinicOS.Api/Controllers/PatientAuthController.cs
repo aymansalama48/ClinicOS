@@ -1,5 +1,6 @@
-﻿namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers;
 
+using ClinicOS.Api.Contracts.PatientAuth;
 using ClinicOS.Api.Controllers.Base;
 using ClinicOS.Application.Features.Accounts.PatientAuth.Commands.PatientEmailLogin;
 using ClinicOS.Application.Features.Accounts.PatientAuth.Commands.PatientGoogleLogin;
@@ -18,9 +19,10 @@ public class PatientAuthController : BaseApiController
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IResult> Login(
-        [FromBody] PatientEmailLoginCommand command,
+        [FromBody] PatientEmailLoginRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new PatientEmailLoginCommand(request.Email, request.Password);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -31,9 +33,10 @@ public class PatientAuthController : BaseApiController
     [HttpPost("google-login")]
     [AllowAnonymous]
     public async Task<IResult> GoogleLogin(
-        [FromBody] PatientGoogleLoginCommand command,
+        [FromBody] PatientGoogleLoginRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new PatientGoogleLoginCommand(request.IdToken);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -44,9 +47,14 @@ public class PatientAuthController : BaseApiController
     [HttpPost("register")]
     [AllowAnonymous]
     public async Task<IResult> Register(
-        [FromBody] RegisterPermanentAccountCommand command,
+        [FromBody] RegisterPermanentAccountRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new RegisterPermanentAccountCommand(
+            request.Email,
+            request.Password,
+            request.PhoneNumber,
+            request.OtpCode);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -57,9 +65,13 @@ public class PatientAuthController : BaseApiController
     [HttpPost("otp-login")]
     [AllowAnonymous]
     public async Task<IResult> OtpLogin(
-        [FromBody] PatientOtpLoginCommand command,
+        [FromBody] PatientOtpLoginRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new PatientOtpLoginCommand(
+            request.PhoneNumber,
+            request.Code,
+            request.Purpose);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }

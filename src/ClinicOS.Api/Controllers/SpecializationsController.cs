@@ -1,4 +1,4 @@
-﻿namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers;
 
 using ClinicOS.Api.Contracts.Specializations;
 using ClinicOS.Api.Controllers.Base;
@@ -18,21 +18,29 @@ public class SpecializationsController : BaseApiController
 {
     [HttpPost]
     public async Task<IResult> CreateSpecialization(
-        [FromBody] CreateSpecializationCommand command,
+        [FromBody] CreateSpecializationRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateSpecializationCommand(
+            request.Name,
+            request.Description);
+
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IResult> UpdateSpecialization(
-        Guid id,
-        [FromBody] UpdateSpecializationCommand command,
+        [FromRoute] Guid id,
+        [FromBody] UpdateSpecializationRequest request,
         CancellationToken cancellationToken)
     {
-        var request = command with { SpecializationId = id };
-        var result = await Mediator.Send(request, cancellationToken);
+        var command = new UpdateSpecializationCommand(
+            id,
+            request.Name,
+            request.Description);
+
+        var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
 

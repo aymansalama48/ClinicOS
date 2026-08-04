@@ -1,5 +1,6 @@
-﻿namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers;
 
+using ClinicOS.Api.Contracts.Otps;
 using ClinicOS.Api.Controllers.Base;
 using ClinicOS.Application.Features.Otps.Commands.RequestOtp;
 using Microsoft.AspNetCore.Authorization;
@@ -15,9 +16,13 @@ public class OtpsController : BaseApiController
     [HttpPost("request")]
     [AllowAnonymous]
     public async Task<IResult> RequestOtp(
-        [FromBody] RequestOtpCommand command,
+        [FromBody] RequestOtpRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new RequestOtpCommand(
+            request.PhoneNumber,
+            request.Purpose,
+            request.AppointmentId);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }

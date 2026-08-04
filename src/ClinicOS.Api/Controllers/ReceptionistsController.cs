@@ -1,4 +1,4 @@
-﻿namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers;
 
 using ClinicOS.Api.Contracts.Receptionists; // 👈 استدعاء الـ Contract
 using ClinicOS.Api.Controllers.Base;
@@ -59,9 +59,10 @@ public class ReceptionistsController : BaseApiController
     [HttpPost("me/profile")]
     [Authorize(Roles = "Receptionist")]
     public async Task<IResult> CompleteMyProfile(
-        [FromBody] CompleteMyReceptionistProfileCommand command,
+        [FromBody] CompleteMyReceptionistProfileRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CompleteMyReceptionistProfileCommand(request.SpecializationId);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -69,9 +70,10 @@ public class ReceptionistsController : BaseApiController
     [HttpPut("me/profile")]
     [Authorize(Roles = "Receptionist")]
     public async Task<IResult> UpdateMyProfile(
-        [FromBody] UpdateMyReceptionistProfileCommand command,
+        [FromBody] UpdateMyReceptionistProfileRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new UpdateMyReceptionistProfileCommand(request.SpecializationId);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }

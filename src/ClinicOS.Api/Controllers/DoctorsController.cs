@@ -1,4 +1,4 @@
-﻿namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers;
 
 using ClinicOS.Api.Contracts.Doctors; // 👈 استدعاء الـ Contracts
 using ClinicOS.Api.Controllers.Base;
@@ -24,11 +24,17 @@ public class DoctorsController : BaseApiController
     [HttpPost("{id:guid}/availability")]
     public async Task<IResult> SetDoctorAvailability(
         Guid id,
-        [FromBody] SetDoctorAvailabilityCommand command,
+        [FromBody] SetDoctorAvailabilityRequest request,
         CancellationToken cancellationToken)
     {
-        var request = command with { DoctorId = id };
-        var result = await Mediator.Send(request, cancellationToken);
+        var command = new SetDoctorAvailabilityCommand(
+            id,
+            request.DayOfWeek,
+            request.Period,
+            request.StartTime,
+            request.EndTime,
+            request.MaxPatients);
+        var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
 
@@ -94,9 +100,15 @@ public class DoctorsController : BaseApiController
     [HttpPost("me/profile")]
     [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Doctor")]
     public async Task<IResult> CompleteMyProfile(
-        [FromBody] CompleteMyDoctorProfileCommand command,
+        [FromBody] CompleteMyDoctorProfileRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CompleteMyDoctorProfileCommand(
+            request.SpecializationId,
+            request.Bio,
+            request.YearsOfExperience,
+            request.ConsultationFee,
+            request.UrgentSurchargeFee);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -104,9 +116,15 @@ public class DoctorsController : BaseApiController
     [HttpPut("me/profile")]
     [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Doctor")]
     public async Task<IResult> UpdateMyProfile(
-        [FromBody] UpdateMyDoctorProfileCommand command,
+        [FromBody] UpdateMyDoctorProfileRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new UpdateMyDoctorProfileCommand(
+            request.SpecializationId,
+            request.Bio,
+            request.YearsOfExperience,
+            request.ConsultationFee,
+            request.UrgentSurchargeFee);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }

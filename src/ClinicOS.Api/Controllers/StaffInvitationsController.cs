@@ -1,5 +1,6 @@
-﻿namespace ClinicOS.Api.Controllers;
+namespace ClinicOS.Api.Controllers;
 
+using ClinicOS.Api.Contracts.StaffInvitations;
 using ClinicOS.Api.Controllers.Base;
 using ClinicOS.Application.Features.Accounts.StaffInvitations.Commands.AcceptInvitation;
 using ClinicOS.Application.Features.Accounts.StaffInvitations.Commands.AcceptInvitationWithGoogle;
@@ -18,9 +19,14 @@ public class StaffInvitationsController : BaseApiController
     [HttpPost("send")]
     //[Authorize(Roles = "Admin")]
     public async Task<IResult> SendInvitation(
-        [FromBody] SendStaffInvitationCommand command,
+        [FromBody] SendStaffInvitationRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new SendStaffInvitationCommand(
+            request.Email,
+            request.Role,
+            request.SpecializationId);
+
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -45,9 +51,15 @@ public class StaffInvitationsController : BaseApiController
     [HttpPost("accept")]
     [AllowAnonymous]
     public async Task<IResult> AcceptInvitation(
-        [FromBody] AcceptInvitationCommand command,
+        [FromBody] AcceptInvitationRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new AcceptInvitationCommand(
+            request.InvitationToken,
+            request.FullName,
+            request.Password,
+            request.PhoneNumber);
+
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -58,9 +70,13 @@ public class StaffInvitationsController : BaseApiController
     [HttpPost("accept-google")]
     [AllowAnonymous]
     public async Task<IResult> AcceptInvitationWithGoogle(
-        [FromBody] AcceptInvitationWithGoogleCommand command,
+        [FromBody] AcceptInvitationWithGoogleRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new AcceptInvitationWithGoogleCommand(
+            request.InvitationToken,
+            request.GoogleIdToken);
+
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }

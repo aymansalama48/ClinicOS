@@ -30,9 +30,10 @@ public class AccountsController : BaseApiController
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IResult> Login(
-        [FromBody] StaffLoginCommand command,
+        [FromBody] StaffLoginRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new StaffLoginCommand(request.Email, request.Password);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -43,9 +44,10 @@ public class AccountsController : BaseApiController
     [HttpPost("google-login")]
     [AllowAnonymous]
     public async Task<IResult> GoogleLogin(
-        [FromBody] StaffGoogleLoginCommand command,
+        [FromBody] StaffGoogleLoginRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new StaffGoogleLoginCommand(request.IdToken);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -56,9 +58,10 @@ public class AccountsController : BaseApiController
     [HttpPost("refresh-token")]
     [AllowAnonymous]
     public async Task<IResult> RefreshToken(
-        [FromBody] RefreshTokenCommand command,
+        [FromBody] RefreshTokenRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new RefreshTokenCommand(request.RefreshToken);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -69,9 +72,10 @@ public class AccountsController : BaseApiController
     [HttpPost("logout")]
     [Authorize]
     public async Task<IResult> Logout(
-        [FromBody] LogoutCommand command,
+        [FromBody] LogoutRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new LogoutCommand(request.RefreshToken);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -82,9 +86,10 @@ public class AccountsController : BaseApiController
     [HttpPost("forgot-password")]
     [AllowAnonymous]
     public async Task<IResult> ForgotPassword(
-        [FromBody] ForgotPasswordCommand command,
+        [FromBody] ForgotPasswordRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new ForgotPasswordCommand(request.Email);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -95,9 +100,14 @@ public class AccountsController : BaseApiController
     [HttpPost("reset-password")]
     [AllowAnonymous]
     public async Task<IResult> ResetPassword(
-        [FromBody] ResetPasswordCommand command,
+        [FromBody] ResetPasswordRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new ResetPasswordCommand(
+            request.Email,
+            request.Token,
+            request.NewPassword,
+            request.ConfirmPassword);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -108,9 +118,13 @@ public class AccountsController : BaseApiController
     [HttpPost("change-password")]
     [Authorize]
     public async Task<IResult> ChangePassword(
-        [FromBody] ChangePasswordCommand command,
+        [FromBody] ChangePasswordRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new ChangePasswordCommand(
+            request.CurrentPassword,
+            request.NewPassword,
+            request.ConfirmNewPassword);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -143,9 +157,14 @@ public class AccountsController : BaseApiController
     [HttpPut("me/profile")]
     [Authorize]
     public async Task<IResult> UpdateMyAccountProfile(
-        [FromBody] UpdateMyAccountProfileCommand command,
+        [FromBody] UpdateMyAccountProfileRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new UpdateMyAccountProfileCommand(
+            request.FirstName,
+            request.MiddleName,
+            request.LastName,
+            request.PhoneNumber);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -153,9 +172,10 @@ public class AccountsController : BaseApiController
     [HttpPut("me/profile/picture")]
     [Authorize]
     public async Task<IResult> UpdateMyProfilePicture(
-        [FromBody] UpdateMyProfilePictureCommand command,
+        [FromBody] UpdateMyProfilePictureRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new UpdateMyProfilePictureCommand(request.AvatarUrl);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -211,7 +231,4 @@ public class AccountsController : BaseApiController
 
         return HandleResult(result);
     }
-
-    // 💡 الكلاس الخاص بالريكويست (ممكن تحطه في ملف الـ Contracts أو جوه الكنترولر)
-    public record AssignRoleRequest(string RoleName);
 }
