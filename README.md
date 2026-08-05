@@ -93,6 +93,45 @@
 - Paginated and filterable API endpoints
 
 </td>
+  <tr>
+    <td width="50%">
+
+#### 🔔 Notifications & Alerts
+- In-app **notification system** for real-time updates
+- Get unread counts, mark single/all as read
+- Built-in notification history and pagination
+- Flexible `NotificationDto` structure for various event types
+
+</td>
+    <td width="50%">
+
+#### 📎 Attachments & File Management
+- Centralized **File Storage integration**
+- Secure upload, download, and delete pipelines
+- `AttachmentEntityResolver` for linking files to domain entities
+- Validation behavior for file types and sizes
+
+</td>
+  </tr>
+  <tr>
+    <td width="50%">
+
+#### 📊 Dashboards & Analytics
+- Role-specific KPI summaries
+- **Admin Dashboard:** Clinic-wide metrics and overviews
+- **Doctor Dashboard:** Personalized statistics and daily schedules
+- Optimized summary queries for fast dashboard rendering
+
+</td>
+    <td width="50%">
+
+#### 📋 Medical Records & Prescriptions
+- Robust **Electronic Medical Records (EMR)** tracking
+- Add and manage **Prescriptions** per record
+- Track and append **Medical Tests** and results
+- Unified view for patient history
+
+</td>
   </tr>
 </table>
 
@@ -478,13 +517,14 @@ ClinicOS is under active development. Here's what's coming next:
 | **Phase 1** | 👨‍⚕️ Staff Management | Doctors, receptionists, invitations, profiles | ✅ Done |
 | **Phase 1** | 🧑‍🤝‍🧑 Patient Management | Dual-path registration, self-service portal | ✅ Done |
 | **Phase 1** | 🩺 Specializations | Specialty CRUD, doctor schedules, caching | ✅ Done |
+| **Phase 2** | 📋 Medical Records | Electronic Medical Records (EMR) | ✅ Done |
+| **Phase 2** | 💊 Prescriptions | E-Prescribing & medication management | ✅ Done |
 | **Phase 2** | 📅 Appointments | Online booking, waiting lists, reminders | 🔜 Next |
-| **Phase 2** | 📋 Medical Records | Electronic Medical Records (EMR) | 🔜 Planned |
-| **Phase 2** | 💊 Prescriptions | E-Prescribing & medication management | 🔜 Planned |
+| **Phase 3** | 📊 Analytics Dashboard | Clinic KPIs, Admin & Doctor dashboards | ✅ Done |
 | **Phase 3** | 💰 Billing & Payments | Invoicing, online payments, financial reports | 📋 Planned |
 | **Phase 3** | 🔍 Audit Logs | Full system activity tracking & security audit | 📋 Planned |
-| **Phase 3** | 📊 Analytics Dashboard | Clinic KPIs, reports, and data visualization | 📋 Planned |
-| **Phase 4** | 📱 Notifications | SMS, push notifications, real-time alerts | 📋 Future |
+| **Phase 4** | 📱 Notifications | In-app alerts, real-time tracking | ✅ Done |
+| **Phase 4** | 📎 Attachments | File upload, storage, and entity linking | ✅ Done |
 | **Phase 4** | 🌐 Multi-language | Full i18n support (Arabic, English, etc.) | 📋 Future |
 
 ---
